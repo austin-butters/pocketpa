@@ -1,4 +1,5 @@
 import { PORT } from '#config'
+import prisma from '#lib/prisma'
 import fastifyStatic from '@fastify/static'
 import Fastify from 'fastify'
 import path from 'path'
@@ -28,5 +29,21 @@ const start = async () => {
     process.exit(1)
   }
 }
+
+const shutdown = async (signal: string) => {
+  console.log(`Received ${signal}, shutting down gracefully...`)
+  try {
+    await server.close()
+    await prisma.$disconnect()
+    console.log('Shutdown complete')
+    process.exit(0)
+  } catch (err) {
+    console.error('Error during shutdown:', err)
+    process.exit(1)
+  }
+}
+
+process.on('SIGINT', () => shutdown('SIGINT'))
+process.on('SIGTERM', () => shutdown('SIGTERM'))
 
 start()
