@@ -1,3 +1,5 @@
+import 'dotenv/config'
+
 export const PORT: number = (() => {
   const { PORT } = process.env
   if (!PORT) {
