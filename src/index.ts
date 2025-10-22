@@ -31,6 +31,7 @@ const start = async () => {
 }
 
 const shutdown = async (signal: string) => {
+  console.log('\n')
   console.log(`Received ${signal}, shutting down gracefully...`)
   try {
     await server.close()
