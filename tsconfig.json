@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "lib": ["ES2020"],
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "baseUrl": "./src",
+    "paths": {
+      "#config": ["./config/index.ts"],
+      "#config/*": ["./config/*", "./config/*/index.ts"],
+      "#data": ["./data/index.ts"],
+      "#data/*": ["./data/*", "./data/*/index.ts"],
+      "#lib": ["./lib/index.ts"],
+      "#lib/*": ["./lib/*", "./lib/*/index.ts"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
