@@ -1,5 +1,15 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// MODEL STRUCTURE:
+// All models should be declared with the same structure. Separate each of the following sections with an empty line::
+// Section 1: Resource management fields, such as id and createdAt.
+// Section 2: Model-specific fields. Declare single-field foreign keys, indexes and constraints on these lines.
+// Section 3: Multi-field indexes and constraints that can't be declared on a single line with a specific field.
+// Section 4: Inverse relations, as required by prisma schema syntax. These differ from the relations in section 2 as they are not true foreign keys in the raw data structure.
+
+// RELATIONSHIPS:
+// All relations must be clearly named. Names should reference the true data structure as well as the semantic purpose.
+// Naming conventions should start with the name of the model containing the foreign key, followed by an underscore, followed by the purpose of the relation.
+// For example, a relation between a User and a Project would be named "ProjectUser_member".
 
 generator client {
   provider = "prisma-client-js"
@@ -8,4 +18,73 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(uuid()) @db.Uuid
+  createdAt     DateTime @default(now())      @db.Timestamptz
+
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  
+  projectMemberships ProjectUser[] @relation("ProjectUser_member")
+  shotLogs      ShotLog[] @relation("ShotLog_creator")
+}
+
+model Project {
+  id            String   @id @default(uuid())     @db.Uuid
+  createdAt     DateTime @default(now())           @db.Timestamptz
+
+  name          String
+
+  members       ProjectUser[] @relation("ProjectUser_project")
+  shotLogs      ShotLog[] @relation("ShotLog_project")
+}
+
+enum ProjectUserRole {
+  Admin
+  Member
+}
+
+model ProjectUser {
+  id            String   @id @default(uuid())     @db.Uuid
+  createdAt     DateTime @default(now())           @db.Timestamptz
+
+  projectId     String   @db.Uuid
+  project       Project  @relation("ProjectUser_project", fields: [projectId], references: [id], onDelete: Cascade)
+  userId        String?   @db.Uuid
+  user          User?     @relation("ProjectUser_member", fields: [userId], references: [id], onDelete: SetNull)
+  role          ProjectUserRole @default(Member)
+
+  @@unique([projectId, userId])
+}
+
+enum ShotMark {
+  good
+  bad
+  usable
+}
+
+enum ShotScore {
+  One
+  Two
+  Three
+  Four
+  Five
+}
+
+model ShotLog {
+  id            String   @id @default(uuid())     @db.Uuid
+  createdAt     DateTime @default(now())           @db.Timestamptz
+
+  projectId     String   @db.Uuid
+  project       Project  @relation("ShotLog_project", fields: [projectId], references: [id], onDelete: Cascade)
+  userId        String?   @db.Uuid
+  user          User?     @relation("ShotLog_creator", fields: [userId], references: [id], onDelete: SetNull)
+  timestamp     DateTime? @db.Timestamptz
+  scene         String?  @db.VarChar(50)
+  shot          String?  @db.VarChar(50)
+  mark          ShotMark?
+  score         ShotScore?
+  comment       String?  @db.Text
 }
