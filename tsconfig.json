@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "types": ["node"],
     "target": "ES2020",
     "module": "commonjs",
     "lib": ["ES2020"],
@@ -21,7 +22,9 @@
       "#models": ["./models/index.ts"],
       "#models/*": ["./models/*", "./models/*/index.ts"],
       "#routes": ["./routes/index.ts"],
-      "#routes/*": ["./routes/*", "./routes/*/index.ts"]
+      "#routes/*": ["./routes/*", "./routes/*/index.ts"],
+      "#utils": ["./utils/index.ts"],
+      "#utils/*": ["./utils/*", "./utils/*/index.ts"],
     }
   },
   "include": ["src/**/*"],

@@ -6,8 +6,10 @@ CREATE TABLE "User" (
     "backupCode" VARCHAR(43) NOT NULL,
     "email" TEXT,
     "emailVerified" BOOLEAN NOT NULL DEFAULT false,
-    "emailCode" VARCHAR(6),
-    "emailCodeExpiresAt" TIMESTAMPTZ,
+    "emailVerificationCode" VARCHAR(6),
+    "emailVerificationCodeExpiresAt" TIMESTAMPTZ,
+    "loginVerificationCode" TEXT,
+    "loginVerificationCodeExpiresAt" TIMESTAMPTZ,
     "username" TEXT,
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")

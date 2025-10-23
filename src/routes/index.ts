@@ -1,4 +1,3 @@
-import { userRoutes } from '#routes/user'
 import type { FastifyInstance } from 'fastify'
 
 export const api = async (fastify: FastifyInstance) => {
@@ -7,6 +6,4 @@ export const api = async (fastify: FastifyInstance) => {
       return reply.status(200).send({ status: 'ok' })
     },
   })
-
-  await fastify.register(userRoutes, { prefix: '/user' })
 }
