@@ -7,5 +7,30 @@
   </head>
   <body>
     <h1>STATIC HTML SERVED</h1>
+    <script>
+      const main = async () => {
+        try {
+          const response = await fetch('/api/user', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              email: `test${Math.random()}@test.com`,
+            }),
+          })
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`)
+          }
+
+          const user = await response.json()
+          console.log({ user })
+        } catch (error) {
+          console.error('Error creating user:', error)
+        }
+      }
+      main()
+    </script>
   </body>
 </html>

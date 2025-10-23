@@ -17,7 +17,11 @@
       "#data": ["./data/index.ts"],
       "#data/*": ["./data/*", "./data/*/index.ts"],
       "#lib": ["./lib/index.ts"],
-      "#lib/*": ["./lib/*", "./lib/*/index.ts"]
+      "#lib/*": ["./lib/*", "./lib/*/index.ts"],
+      "#models": ["./models/index.ts"],
+      "#models/*": ["./models/*", "./models/*/index.ts"],
+      "#routes": ["./routes/index.ts"],
+      "#routes/*": ["./routes/*", "./routes/*/index.ts"]
     }
   },
   "include": ["src/**/*"],

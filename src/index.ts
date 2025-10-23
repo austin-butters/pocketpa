@@ -1,18 +1,22 @@
 import { PORT } from '#config'
-import prisma from '#lib/prisma'
+import { prisma } from '#lib/prisma'
+import { api } from '#routes'
 import fastifyStatic from '@fastify/static'
 import Fastify from 'fastify'
 import path from 'path'
 
 const server = Fastify({
   logger: true,
+  ajv: {
+    customOptions: {
+      removeAdditional: false,
+    },
+  },
 })
 
 const start = async () => {
   try {
-    server.get('/health', async (_, reply) => {
-      return reply.status(200).send({ status: 'ok' })
-    })
+    await server.register(api, { prefix: '/api' })
 
     await server.register(fastifyStatic, {
       root: path.join(__dirname, '../public'),

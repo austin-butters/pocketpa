@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client'
+import type * as runtime from '@prisma/client/runtime/library'
 
-const prisma = new PrismaClient()
+export const prisma = new PrismaClient()
 
-export default prisma
+export type PartialClient = Omit<PrismaClient, runtime.ITXClientDenyList>
