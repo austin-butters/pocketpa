@@ -21,74 +21,14 @@ datasource db {
 }
 
 model User {
-  id            String   @id @default(uuid()) @db.Uuid
-  createdAt     DateTime @default(now())      @db.Timestamptz
-  updatedAt     DateTime @updatedAt            @db.Timestamptz
+  id                     String      @id @default(uuid())        @db.Uuid
+  createdAt              DateTime    @default(now())             @db.Timestamptz
+  updatedAt              DateTime    @updatedAt                  @db.Timestamptz
 
-  email         String   @unique
-  emailVerified Boolean  @default(false)
-  
-  projectMemberships ProjectUser[] @relation("ProjectUser_member")
-  shotLogs      ShotLog[] @relation("ShotLog_creator")
-}
-
-model Project {
-  id            String   @id @default(uuid())     @db.Uuid
-  createdAt     DateTime @default(now())           @db.Timestamptz
-  updatedAt     DateTime @updatedAt                @db.Timestamptz
-
-  name          String
-
-  members       ProjectUser[] @relation("ProjectUser_project")
-  shotLogs      ShotLog[] @relation("ShotLog_project")
-}
-
-enum ProjectUserRole {
-  Admin
-  Member
-}
-
-model ProjectUser {
-  id            String   @id @default(uuid())     @db.Uuid
-  createdAt     DateTime @default(now())           @db.Timestamptz
-  updatedAt     DateTime @updatedAt                @db.Timestamptz
-
-  projectId     String   @db.Uuid
-  project       Project  @relation("ProjectUser_project", fields: [projectId], references: [id], onDelete: Cascade)
-  userId        String?   @db.Uuid
-  user          User?     @relation("ProjectUser_member", fields: [userId], references: [id], onDelete: SetNull)
-  role          ProjectUserRole @default(Member)
-
-  @@unique([projectId, userId])
-}
-
-enum ShotMark {
-  good
-  bad
-  usable
-}
-
-enum ShotScore {
-  One
-  Two
-  Three
-  Four
-  Five
-}
-
-model ShotLog {
-  id            String   @id @default(uuid())     @db.Uuid
-  createdAt     DateTime @default(now())           @db.Timestamptz
-  updatedAt     DateTime @updatedAt                @db.Timestamptz
-
-  projectId     String   @db.Uuid
-  project       Project  @relation("ShotLog_project", fields: [projectId], references: [id], onDelete: Cascade)
-  userId        String?   @db.Uuid
-  user          User?     @relation("ShotLog_creator", fields: [userId], references: [id], onDelete: SetNull)
-  timestamp     DateTime? @db.Timestamptz
-  scene         String?  @db.VarChar(50)
-  shot          String?  @db.VarChar(50)
-  mark          ShotMark?
-  score         ShotScore?
-  comment       String?  @db.Text
+  backupCode             String       @unique                    @db.VarChar(43)
+  email                  String?      @unique
+  emailVerified          Boolean      @default(false)
+  emailCode              String?                                 @db.VarChar(6)
+  emailCodeExpiresAt     DateTime?    @db.Timestamptz
+  username               String?      @unique
 }
