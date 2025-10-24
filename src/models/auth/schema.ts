@@ -111,3 +111,33 @@ export const POSTLogin = {
     } satisfies JSONSchema7,
   },
 } as const
+
+export const POSTVerifyLogin = {
+  body: {
+    type: 'object',
+    properties: {
+      email: {
+        type: 'string',
+      },
+      verificationCode: {
+        type: 'string',
+      },
+    },
+    required: ['email', 'verificationCode'],
+  } satisfies JSONSchema7,
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        user: {
+          anyOf: [userSchema.user, { type: 'null' }],
+        },
+        verified: {
+          type: 'boolean',
+        },
+      },
+      required: ['user', 'verified'],
+      additionalProperties: false,
+    } satisfies JSONSchema7,
+  },
+} as const

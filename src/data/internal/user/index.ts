@@ -70,14 +70,12 @@ export const _getUserByBackupCode = async (
   return { _user }
 }
 
-export const _getUserFromEmail = async (
+export const _getUserByEmail = async (
   email: string,
   client: PartialClient = prisma
 ): Promise<{ _user: _User | undefined }> => {
   if (client === prisma) {
-    return prisma.$transaction(async (client) =>
-      _getUserFromEmail(email, client)
-    )
+    return prisma.$transaction(async (client) => _getUserByEmail(email, client))
   }
 
   const _user =

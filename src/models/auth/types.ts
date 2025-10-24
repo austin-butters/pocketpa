@@ -24,3 +24,10 @@ export interface AuthPOSTLogin {
     email: string
   }
 }
+
+export interface AuthPOSTVerifyLogin {
+  Body: {
+    email: string
+    verificationCode: string
+  }
+}
