@@ -23,14 +23,29 @@ const inOneHour = () => new Date(Date.now() + 60 * 60 * 1000)
 /**
  * WARNING: This is an internal function.
  */
-export const _userVerificationFieldsAreValid = (user: _User) => {
-  return (
-    (!!user.email || (!user.email && !user.emailVerified)) &&
-    ((!!user.emailVerificationCode && !!user.emailVerificationCodeExpiresAt) ||
-      (!user.emailVerificationCode && !user.emailVerificationCodeExpiresAt)) &&
-    ((!!user.loginVerificationCode && !!user.loginVerificationCodeExpiresAt) ||
-      (!user.loginVerificationCode && !user.loginVerificationCodeExpiresAt))
+export const _userVerificationFieldsAreValid = (
+  _user: _User
+): { _isValidUser: boolean } => {
+  const _hasNoEmailVerificationFields =
+    !_user.emailVerificationCode && !_user.emailVerificationCodeExpiresAt
+  const _hasBothEmailVerificationFields =
+    !!_user.emailVerificationCode && !!_user.emailVerificationCodeExpiresAt
+  const _hasNoLoginVerificationFields =
+    !_user.loginVerificationCode && !_user.loginVerificationCodeExpiresAt
+  const _hasBothLoginVerificationFields =
+    !!_user.loginVerificationCode && !!_user.loginVerificationCodeExpiresAt
+  const _emailVerificationFieldsAreValid =
+    _hasNoEmailVerificationFields || _hasBothEmailVerificationFields
+  const _loginVerificationFieldsAreValid =
+    _hasNoLoginVerificationFields || _hasBothLoginVerificationFields
+  const _doesNotHaveBothValidVerificationOptions = !(
+    _hasBothEmailVerificationFields && _hasBothEmailVerificationFields
   )
+  const _isValidUser =
+    _emailVerificationFieldsAreValid &&
+    _loginVerificationFieldsAreValid &&
+    _doesNotHaveBothValidVerificationOptions
+  return { _isValidUser }
 }
 
 /**
@@ -45,8 +60,9 @@ export const _getUser = async (
   }
 
   const _user = await client.user.findUniqueOrThrow({ where: { id: userId } })
+  const { _isValidUser } = _userVerificationFieldsAreValid(_user)
   ok(
-    _userVerificationFieldsAreValid(_user),
+    _isValidUser,
     'found incorrectly formed user verification fields when reading user'
   )
   return { _user }
