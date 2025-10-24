@@ -21,6 +21,7 @@ import {
 } from '#data/internal/user'
 import { clearAllSessionsForUser } from '#data/session'
 import { emailIsTaken, usernameIsTaken } from '#data/user'
+import { authenticated } from '#middleware'
 import {
   type AuthPOSTCheckAvailability,
   type AuthPOSTLogin,
@@ -32,6 +33,7 @@ import {
   authSchema,
 } from '#models/auth'
 import { type User } from '#models/user'
+import { type FastifyUnauthenticatedRequest } from '#types/fastify'
 import { toPublic } from '#utils/to-public'
 import { type FastifyInstance, FastifyReply } from 'fastify'
 
@@ -57,7 +59,8 @@ const setAuthCookie = (reply: FastifyReply, _session: _Session) => {
   })
 }
 
-const clearAuthCookie = (reply: FastifyReply) => {
+// TODO: Find a better place to export this and the setAuthCookie function.
+export const clearAuthCookie = (reply: FastifyReply) => {
   reply.clearCookie(AUTH_COOKIE_NAME, standardClearSignedCookieOptions)
 }
 
@@ -65,7 +68,7 @@ export const authRoutes = async (fastify: FastifyInstance) => {
   // Check if a current session exists for the user. If so. If not, client will have to log in or sign up.
   fastify.get('/session-status', {
     schema: authSchema.GETSessionStatus,
-    handler: async (request, reply) => {
+    handler: async (request: FastifyUnauthenticatedRequest, reply) => {
       const token = request.cookies[AUTH_COOKIE_NAME]
       let sessionExists: boolean = false
       let user: User | null = null
@@ -93,7 +96,7 @@ export const authRoutes = async (fastify: FastifyInstance) => {
   // Before registering, allow a user to check if their email or username is available.
   fastify.post<AuthPOSTCheckAvailability>('/check-registration-availability', {
     schema: authSchema.POSTCheckAvailability,
-    handler: async (request, reply) => {
+    handler: async (request: FastifyUnauthenticatedRequest, reply) => {
       const { email, username } = request.body
       try {
         const emailAvailable = !(await emailIsTaken(email))
@@ -106,7 +109,7 @@ export const authRoutes = async (fastify: FastifyInstance) => {
   })
 
   fastify.post('/register-anonymous', {
-    handler: async (request, reply) => {
+    handler: async (request: FastifyUnauthenticatedRequest, reply) => {
       const token = request.cookies[AUTH_COOKIE_NAME]
       if (token) {
         return reply.status(400).send({
@@ -129,7 +132,7 @@ export const authRoutes = async (fastify: FastifyInstance) => {
   // Register potential user, either new or from anonymous
   fastify.post<AuthPOSTRegisterPotential>('/register', {
     schema: authSchema.POSTRegisterPotential,
-    handler: async (request, reply) => {
+    handler: async (request: FastifyUnauthenticatedRequest, reply) => {
       const { email, username } = request.body
       const token = request.cookies[AUTH_COOKIE_NAME]
       try {
@@ -180,7 +183,7 @@ export const authRoutes = async (fastify: FastifyInstance) => {
   // Log in with backup code. This works for any type of user, but is intended primarily for anonymous users.
   fastify.post<AuthPOSTLoginAnonymous>('/login-backup', {
     schema: authSchema.POSTLoginAnonymous,
-    handler: async (request, reply) => {
+    handler: async (request: FastifyUnauthenticatedRequest, reply) => {
       try {
         const { backupCode } = request.body
         const { _user } = await _getUserByBackupCode(backupCode)
@@ -202,7 +205,7 @@ export const authRoutes = async (fastify: FastifyInstance) => {
   // Log in potential or full user with email. If potential, will need to verify email, otherwise will need to verify login.
   fastify.post<AuthPOSTLogin>('/login', {
     schema: authSchema.POSTLogin,
-    handler: async (request, reply) => {
+    handler: async (request: FastifyUnauthenticatedRequest, reply) => {
       const { email } = request.body
       try {
         const { _user } = await _getUserByEmail(email)
@@ -228,7 +231,7 @@ export const authRoutes = async (fastify: FastifyInstance) => {
   // Verify login for full user with email verification code
   fastify.post<AuthPOSTVerifyLogin>('/verify-login', {
     schema: authSchema.POSTVerifyLogin,
-    handler: async (request, reply) => {
+    handler: async (request: FastifyUnauthenticatedRequest, reply) => {
       const { email, verificationCode } = request.body
       try {
         const { _user } = await _getUserByEmail(email)
@@ -268,7 +271,7 @@ export const authRoutes = async (fastify: FastifyInstance) => {
   // Verify email for potential user, will create a full user and session if successful.
   fastify.post<AuthPOSTVerifyEmail>('/verify-email', {
     schema: authSchema.POSTVerifyEmail,
-    handler: async (request, reply) => {
+    handler: async (request: FastifyUnauthenticatedRequest, reply) => {
       const { email, verificationCode } = request.body
       try {
         const { _user } = await _getUserByEmail(email)
@@ -311,7 +314,7 @@ export const authRoutes = async (fastify: FastifyInstance) => {
   // Resend email/login verification code if expired.
   fastify.post<AuthPOSTResendVerificationCode>('/resend-verification-code', {
     schema: authSchema.POSTResendVerificationCode,
-    handler: async (request, reply) => {
+    handler: async (request: FastifyUnauthenticatedRequest, reply) => {
       const { email } = request.body
       try {
         const { _user } = await _getUserByEmail(email)
@@ -335,16 +338,14 @@ export const authRoutes = async (fastify: FastifyInstance) => {
   })
 
   // Log out, remove session.
-  fastify.post('/logout', {
-    handler: async (request, reply) => {
-      const token = request.cookies[AUTH_COOKIE_NAME]
-      if (!token) {
-        return reply
-          .status(400)
-          .send({ error: 'Bad Request: already logged out' })
-      }
-      clearAuthCookie(reply)
-      return reply.status(204)
-    },
-  })
+  await fastify.register(
+    authenticated(async (fastify) => {
+      fastify.post('/logout', {
+        handler: async (_, reply) => {
+          clearAuthCookie(reply)
+          return reply.status(204)
+        },
+      })
+    })
+  )
 }
