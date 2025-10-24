@@ -1,26 +1,17 @@
 import { baseSchema } from '#models/base'
 import { JSONSchema7 } from 'jsonschema7'
 
-export const byUserId = {
-  type: 'object',
-  properties: {
-    userId: {
-      type: 'string',
-    },
-  },
-  required: ['userId'],
-  additionalProperties: false,
-} satisfies JSONSchema7
-
-export const createUserData = {
+export const createPotentialUserData = {
   type: 'object',
   properties: {
     email: {
       type: 'string',
-      format: 'email',
+    },
+    username: {
+      type: 'string',
     },
   },
-  required: ['email'],
+  required: ['email', 'username'],
   additionalProperties: false,
 } satisfies JSONSchema7
 
@@ -28,33 +19,21 @@ export const user = {
   type: 'object',
   properties: {
     ...baseSchema.model.properties,
-    ...createUserData.properties,
+    email: {
+      type: ['string', 'null'],
+    },
+    username: {
+      type: ['string', 'null'],
+    },
     emailVerified: {
       type: 'boolean',
     },
   },
   required: [
     ...baseSchema.model.required,
-    ...createUserData.required,
+    'email',
+    'username',
     'emailVerified',
   ],
   additionalProperties: false,
 } satisfies JSONSchema7
-
-export const POST = {
-  body: createUserData,
-  response: {
-    201: user,
-  },
-}
-
-export const GET = {
-  params: byUserId,
-  response: {
-    200: user,
-  },
-}
-
-export const DELETE = {
-  params: byUserId,
-}

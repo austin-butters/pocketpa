@@ -1,6 +1,7 @@
-import { PORT } from '#config'
+import { COOKIE_SECRET, PORT } from '#config'
 import { prisma } from '#lib/prisma'
 import { api } from '#routes'
+import fastifyCookie from '@fastify/cookie'
 import fastifyStatic from '@fastify/static'
 import Fastify from 'fastify'
 import path from 'path'
@@ -16,6 +17,10 @@ const server = Fastify({
 
 const start = async () => {
   try {
+    await server.register(fastifyCookie, {
+      secret: COOKIE_SECRET,
+    })
+
     await server.register(api, { prefix: '/api' })
 
     await server.register(fastifyStatic, {

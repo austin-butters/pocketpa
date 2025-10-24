@@ -1,25 +1,12 @@
-import { BaseTypes } from '#models/base'
+import { Model } from '#models/base'
 
-export interface ByUserId {
-  userId: string
-}
-
-export interface CreateUserData {
+export interface CreatePotentialUserData {
   email: string
+  username: string
 }
 
-export interface User extends CreateUserData, BaseTypes.Model {
+export interface User extends Model {
+  email: string | null
+  username: string | null
   emailVerified: boolean
-}
-
-export interface POST {
-  Body: CreateUserData
-}
-
-export interface GET {
-  Params: ByUserId
-}
-
-export interface DELETE {
-  Params: ByUserId
 }

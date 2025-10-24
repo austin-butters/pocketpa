@@ -65,3 +65,25 @@ export const _readCurrentSessionFromToken = async (
     })) ?? undefined
   return { _session }
 }
+
+/**
+ * WARNING: This is an internal function.
+ */
+export const _refreshSession = async (
+  _session: _Session,
+  client: PartialClient = prisma
+): Promise<{ _session: _Session }> => {
+  if (client === prisma) {
+    return prisma.$transaction(async (client) =>
+      _refreshSession(_session, client)
+    )
+  }
+
+  const _updated = await client.session.update({
+    where: { id: _session.id },
+    data: {
+      expiresAt: inOneYear(),
+    },
+  })
+  return { _session: _updated }
+}
