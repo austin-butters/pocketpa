@@ -327,6 +327,7 @@ export const authRoutes = async (fastify: FastifyInstance) => {
         } else {
           return reply.status(401).send({ error: 'Unauthorized' })
         }
+        return reply.status(200).send({ resent: true })
       } catch {
         return reply.status(500).send({ error: 'Internal server error' })
       }
