@@ -1,6 +1,5 @@
 import { PartialClient, prisma } from '#lib/prisma'
 import { randomBytes } from 'crypto'
-import { _User } from '../user'
 
 /**
  * WARNING: This is an internal type.
@@ -19,14 +18,15 @@ const inOneYear = () => new Date(Date.now() + 60 * 60 * 24 * 365 * 1000)
 export const _createSession = async (
   userId: string,
   client: PartialClient = prisma
-): Promise<_Session> => {
+): Promise<{ _session: _Session }> => {
   if (client === prisma) {
     return prisma.$transaction(async (client) => _createSession(userId, client))
   }
 
-  return client.session.create({
+  const _session = await client.session.create({
     data: { userId, token: token(), expiresAt: inOneYear() },
   })
+  return { _session }
 }
 
 /**
@@ -35,14 +35,15 @@ export const _createSession = async (
 export const _deleteSession = async (
   sessionId: string,
   client: PartialClient = prisma
-): Promise<_Session> => {
+): Promise<{ _session: _Session }> => {
   if (client === prisma) {
     return prisma.$transaction(async (client) =>
       _deleteSession(sessionId, client)
     )
   }
 
-  return client.session.delete({ where: { id: sessionId } })
+  const _session = await client.session.delete({ where: { id: sessionId } })
+  return { _session }
 }
 
 /**
@@ -51,16 +52,16 @@ export const _deleteSession = async (
 export const _readCurrentSessionFromToken = async (
   token: string,
   client: PartialClient = prisma
-): Promise<(_Session & { user: _User }) | undefined> => {
+): Promise<{ _session: _Session | undefined }> => {
   if (client === prisma) {
     return prisma.$transaction(async (client) =>
       _readCurrentSessionFromToken(token, client)
     )
   }
 
-  const session = await client.session.findUnique({
-    where: { token, expiresAt: { gt: new Date() } },
-    include: { user: true },
-  })
-  return session ?? undefined
+  const _session =
+    (await client.session.findUnique({
+      where: { token, expiresAt: { gt: new Date() } },
+    })) ?? undefined
+  return { _session }
 }
