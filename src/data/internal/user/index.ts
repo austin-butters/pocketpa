@@ -55,18 +55,33 @@ export const _getUser = async (
 /**
  * WARNING: This is an internal function.
  */
-export const _getUserFromBackupCode = async (
+export const _getUserByBackupCode = async (
   backupCode: string,
   client: PartialClient = prisma
 ): Promise<{ _user: _User | undefined }> => {
   if (client === prisma) {
     return prisma.$transaction(async (client) =>
-      _getUserFromBackupCode(backupCode, client)
+      _getUserByBackupCode(backupCode, client)
     )
   }
 
   const _user =
     (await client.user.findUnique({ where: { backupCode } })) ?? undefined
+  return { _user }
+}
+
+export const _getUserFromEmail = async (
+  email: string,
+  client: PartialClient = prisma
+): Promise<{ _user: _User | undefined }> => {
+  if (client === prisma) {
+    return prisma.$transaction(async (client) =>
+      _getUserFromEmail(email, client)
+    )
+  }
+
+  const _user =
+    (await client.user.findUnique({ where: { email } })) ?? undefined
   return { _user }
 }
 

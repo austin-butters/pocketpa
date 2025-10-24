@@ -18,3 +18,9 @@ export interface AuthPOSTLoginAnonymous {
     backupCode: string
   }
 }
+
+export interface AuthPOSTLogin {
+  Body: {
+    email: string
+  }
+}

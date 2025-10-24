@@ -10,14 +10,18 @@ import {
   _createPotentialUser,
   _createPotentialUserFromAnonymousUser,
   _getUser,
-  _getUserFromBackupCode,
+  _getUserByBackupCode,
+  _getUserFromEmail,
   _getUserType,
+  _refreshUserEmailVerificationCode,
+  _refreshUserLoginVerificationCode,
   _User,
 } from '#data/internal/user'
 import { clearAllSessionsForUser } from '#data/session'
 import { emailIsTaken, usernameIsTaken } from '#data/user'
 import {
   AuthPOSTCheckAvailability,
+  AuthPOSTLogin,
   AuthPOSTLoginAnonymous,
   AuthPOSTRegisterPotential,
   authSchema,
@@ -168,12 +172,12 @@ export const authRoutes = async (fastify: FastifyInstance) => {
   })
 
   // // Log in with backup code. This works for any type of user, but is intended primarily for anonymous users.
-  fastify.post<AuthPOSTLoginAnonymous>('/login-backup-code', {
+  fastify.post<AuthPOSTLoginAnonymous>('/login-backup', {
     schema: authSchema.POSTLoginAnonymous,
     handler: async (request, reply) => {
       try {
         const { backupCode } = request.body
-        const { _user } = await _getUserFromBackupCode(backupCode)
+        const { _user } = await _getUserByBackupCode(backupCode)
         if (!_user) {
           return reply.status(401).send({ error: 'Unauthorized' })
         }
@@ -188,8 +192,29 @@ export const authRoutes = async (fastify: FastifyInstance) => {
     },
   })
 
-  // // Log in potential or full user with email. If potential, will need to verify email.
-  // fastify.post('/login-email', {})
+  // // Log in potential or full user with email. If potential, will need to verify email, otherwise will need to verify login.
+  fastify.post<AuthPOSTLogin>('/login', {
+    schema: authSchema.POSTLogin,
+    handler: async (request, reply) => {
+      const { email } = request.body
+      try {
+        const { _user } = await _getUserFromEmail(email)
+        if (!_user) {
+          return reply.status(401).send({ error: 'Unauthorized' })
+        }
+        if (_getUserType(_user) === 'potential') {
+          await _refreshUserEmailVerificationCode(_user.id)
+          return reply.status(200).send({ loginStatus: 'verifyEmail' })
+        } else {
+          await _refreshUserLoginVerificationCode(_user.id)
+          return reply.status(200).send({ loginStatus: 'verifyLogin' })
+        }
+      } catch {
+        return reply.status(500).send({ error: 'Internal server error' })
+      }
+    },
+  })
+
   // // Verify login for full user with email verification code
   // fastify.post('/verify-login', {})
   // // Initialise potential user with email. Will create a verification code.

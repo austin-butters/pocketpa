@@ -85,3 +85,29 @@ export const POSTLoginAnonymous = {
     } satisfies JSONSchema7,
   },
 } as const
+
+export const POSTLogin = {
+  body: {
+    type: 'object',
+    properties: {
+      email: {
+        type: 'string',
+      },
+    },
+    required: ['email'],
+    additionalProperties: false,
+  } satisfies JSONSchema7,
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        loginStatus: {
+          type: 'string',
+          enum: ['verifyEmail', 'verifyLogin'],
+        },
+      },
+      required: ['loginStatus'],
+      additionalProperties: false,
+    } satisfies JSONSchema7,
+  },
+} as const
