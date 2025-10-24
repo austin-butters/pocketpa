@@ -187,7 +187,7 @@ export const authRoutes = async (fastify: FastifyInstance) => {
         if (!_user) {
           return reply.status(401).send({ error: 'Unauthorized' })
         }
-        clearAllSessionsForUser(_user.id)
+        await clearAllSessionsForUser(_user.id)
         const { _session } = await _createSession(_user.id)
         setAuthCookie(reply, _session)
         const user = toPublic.user(_user)
