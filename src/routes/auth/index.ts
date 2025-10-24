@@ -26,7 +26,7 @@ import {
   type AuthPOSTLogin,
   type AuthPOSTLoginAnonymous,
   type AuthPOSTRegisterPotential,
-  AuthPOSTResendVerificationCode,
+  type AuthPOSTResendVerificationCode,
   type AuthPOSTVerifyEmail,
   type AuthPOSTVerifyLogin,
   authSchema,
@@ -127,7 +127,7 @@ export const authRoutes = async (fastify: FastifyInstance) => {
   })
 
   // Register potential user, either new or from anonymous
-  fastify.post<AuthPOSTRegisterPotential>('/register-potential', {
+  fastify.post<AuthPOSTRegisterPotential>('/register', {
     schema: authSchema.POSTRegisterPotential,
     handler: async (request, reply) => {
       const { email, username } = request.body
