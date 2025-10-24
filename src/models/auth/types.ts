@@ -12,3 +12,9 @@ export interface AuthPOSTCheckAvailabilityResponse {
 export interface AuthPOSTRegisterPotential {
   Body: CreatePotentialUserData
 }
+
+export interface AuthPOSTLoginAnonymous {
+  Body: {
+    backupCode: string
+  }
+}

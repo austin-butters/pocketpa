@@ -10,12 +10,15 @@ import {
   _createPotentialUser,
   _createPotentialUserFromAnonymousUser,
   _getUser,
+  _getUserFromBackupCode,
   _getUserType,
   _User,
 } from '#data/internal/user'
+import { clearAllSessionsForUser } from '#data/session'
 import { emailIsTaken, usernameIsTaken } from '#data/user'
 import {
   AuthPOSTCheckAvailability,
+  AuthPOSTLoginAnonymous,
   AuthPOSTRegisterPotential,
   authSchema,
 } from '#models/auth'
@@ -164,8 +167,27 @@ export const authRoutes = async (fastify: FastifyInstance) => {
     },
   })
 
-  // // Log in anonymous with backup code
-  // fastify.post('/login-anonymous', {})
+  // // Log in with backup code. This works for any type of user, but is intended primarily for anonymous users.
+  fastify.post<AuthPOSTLoginAnonymous>('/login-backup-code', {
+    schema: authSchema.POSTLoginAnonymous,
+    handler: async (request, reply) => {
+      try {
+        const { backupCode } = request.body
+        const { _user } = await _getUserFromBackupCode(backupCode)
+        if (!_user) {
+          return reply.status(401).send({ error: 'Unauthorized' })
+        }
+        clearAllSessionsForUser(_user.id)
+        const { _session } = await _createSession(_user.id)
+        setAuthCookie(reply, _session)
+        const user = toPublic.user(_user)
+        return reply.status(200).send({ user })
+      } catch {
+        return reply.status(500).send({ error: 'Internal server error' })
+      }
+    },
+  })
+
   // // Log in potential or full user with email. If potential, will need to verify email.
   // fastify.post('/login-email', {})
   // // Verify login for full user with email verification code

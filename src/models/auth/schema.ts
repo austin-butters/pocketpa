@@ -62,3 +62,26 @@ export const POSTRegisterPotential = {
     } satisfies JSONSchema7,
   },
 } as const
+
+export const POSTLoginAnonymous = {
+  body: {
+    type: 'object',
+    properties: {
+      backupCode: {
+        type: 'string',
+      },
+    },
+    required: ['backupCode'],
+    additionalProperties: false,
+  } satisfies JSONSchema7,
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        user: userSchema.user,
+      },
+      required: ['user'],
+      additionalProperties: false,
+    } satisfies JSONSchema7,
+  },
+} as const
