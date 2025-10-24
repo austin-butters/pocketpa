@@ -3,7 +3,7 @@ import {
   _createSession,
   _readCurrentSessionFromToken,
   _refreshSession,
-  _Session,
+  type _Session,
 } from '#data/internal/session'
 import {
   _checkAndVerifyUserEmailVerificationCode,
@@ -17,22 +17,22 @@ import {
   _getUserType,
   _refreshUserEmailVerificationCode,
   _refreshUserLoginVerificationCode,
-  _User,
+  type _User,
 } from '#data/internal/user'
 import { clearAllSessionsForUser } from '#data/session'
 import { emailIsTaken, usernameIsTaken } from '#data/user'
 import {
-  AuthPOSTCheckAvailability,
-  AuthPOSTLogin,
-  AuthPOSTLoginAnonymous,
-  AuthPOSTRegisterPotential,
-  AuthPOSTVerifyEmail,
-  AuthPOSTVerifyLogin,
+  type AuthPOSTCheckAvailability,
+  type AuthPOSTLogin,
+  type AuthPOSTLoginAnonymous,
+  type AuthPOSTRegisterPotential,
+  type AuthPOSTVerifyEmail,
+  type AuthPOSTVerifyLogin,
   authSchema,
 } from '#models/auth'
-import { User } from '#models/user'
+import { type User } from '#models/user'
 import { toPublic } from '#utils/to-public'
-import type { FastifyInstance, FastifyReply } from 'fastify'
+import { type FastifyInstance, FastifyReply } from 'fastify'
 
 const standardSetSignedCookieOptions = {
   httpOnly: true,
@@ -223,7 +223,7 @@ export const authRoutes = async (fastify: FastifyInstance) => {
     },
   })
 
-  // // Verify login for full user with email verification code
+  // Verify login for full user with email verification code
   fastify.post<AuthPOSTVerifyLogin>('/verify-login', {
     schema: authSchema.POSTVerifyLogin,
     handler: async (request, reply) => {
@@ -306,8 +306,8 @@ export const authRoutes = async (fastify: FastifyInstance) => {
     },
   })
 
-  // // Resend email verification code if expired.
-  // fastify.post('/resend-email-verification-code', {})
+  // Resend email/login verification code if expired.
+  // fastify.post('/resend-verification-code', {})
   // // Log out, remove session.
   // fastify.post('/logout', {})
 }
