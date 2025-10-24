@@ -26,6 +26,7 @@ import {
   type AuthPOSTLogin,
   type AuthPOSTLoginAnonymous,
   type AuthPOSTRegisterPotential,
+  AuthPOSTResendVerificationCode,
   type AuthPOSTVerifyEmail,
   type AuthPOSTVerifyLogin,
   authSchema,
@@ -165,6 +166,7 @@ export const authRoutes = async (fastify: FastifyInstance) => {
             })
           )._user
         }
+        // TODO: Send the email verification code.
         setAuthCookie(reply, _session)
         const user = toPublic.user(_user)
         return reply.status(201).send({ user })
@@ -307,7 +309,41 @@ export const authRoutes = async (fastify: FastifyInstance) => {
   })
 
   // Resend email/login verification code if expired.
-  // fastify.post('/resend-verification-code', {})
-  // // Log out, remove session.
-  // fastify.post('/logout', {})
+  fastify.post<AuthPOSTResendVerificationCode>('/resend-verification-code', {
+    schema: authSchema.POSTResendVerificationCode,
+    handler: async (request, reply) => {
+      const { email } = request.body
+      try {
+        const { _user } = await _getUserByEmail(email)
+        if (!_user) {
+          return reply.status(401).send({ error: 'Unauthorized' })
+        }
+        if (_getUserType(_user) === 'full') {
+          await _refreshUserLoginVerificationCode(_user.id)
+          // TODO: Send the verification code.
+        } else if (_getUserType(_user) === 'potential') {
+          await _refreshUserEmailVerificationCode(_user.id)
+          // TODO: Send the verification code.
+        } else {
+          return reply.status(401).send({ error: 'Unauthorized' })
+        }
+      } catch {
+        return reply.status(500).send({ error: 'Internal server error' })
+      }
+    },
+  })
+
+  // Log out, remove session.
+  fastify.post('/logout', {
+    handler: async (request, reply) => {
+      const token = request.cookies[AUTH_COOKIE_NAME]
+      if (!token) {
+        return reply
+          .status(400)
+          .send({ error: 'Bad Request: already logged out' })
+      }
+      clearAuthCookie(reply)
+      return reply.status(204)
+    },
+  })
 }

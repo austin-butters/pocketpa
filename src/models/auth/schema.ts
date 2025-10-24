@@ -171,3 +171,28 @@ export const POSTVerifyEmail = {
     } satisfies JSONSchema7,
   },
 } as const
+
+export const POSTResendVerificationCode = {
+  body: {
+    type: 'object',
+    properties: {
+      email: {
+        type: 'string',
+      },
+    },
+    required: ['email'],
+    additionalProperties: false,
+  } satisfies JSONSchema7,
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        resent: {
+          type: 'boolean',
+        },
+      },
+      required: ['resent'],
+      additionalProperties: false,
+    } satisfies JSONSchema7,
+  },
+} as const
