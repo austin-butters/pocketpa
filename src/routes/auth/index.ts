@@ -6,6 +6,7 @@ import {
   _Session,
 } from '#data/internal/session'
 import {
+  _checkAndVerifyUserEmailVerificationCode,
   _checkAndVerifyUserLoginVerificationCode,
   _createAnonymousUser,
   _createPotentialUser,
@@ -25,6 +26,7 @@ import {
   AuthPOSTLogin,
   AuthPOSTLoginAnonymous,
   AuthPOSTRegisterPotential,
+  AuthPOSTVerifyEmail,
   AuthPOSTVerifyLogin,
   authSchema,
 } from '#models/auth'
@@ -173,7 +175,7 @@ export const authRoutes = async (fastify: FastifyInstance) => {
     },
   })
 
-  // // Log in with backup code. This works for any type of user, but is intended primarily for anonymous users.
+  // Log in with backup code. This works for any type of user, but is intended primarily for anonymous users.
   fastify.post<AuthPOSTLoginAnonymous>('/login-backup', {
     schema: authSchema.POSTLoginAnonymous,
     handler: async (request, reply) => {
@@ -189,12 +191,13 @@ export const authRoutes = async (fastify: FastifyInstance) => {
         const user = toPublic.user(_user)
         return reply.status(200).send({ user })
       } catch {
+        clearAuthCookie(reply)
         return reply.status(500).send({ error: 'Internal server error' })
       }
     },
   })
 
-  // // Log in potential or full user with email. If potential, will need to verify email, otherwise will need to verify login.
+  // Log in potential or full user with email. If potential, will need to verify email, otherwise will need to verify login.
   fastify.post<AuthPOSTLogin>('/login', {
     schema: authSchema.POSTLogin,
     handler: async (request, reply) => {
@@ -214,6 +217,7 @@ export const authRoutes = async (fastify: FastifyInstance) => {
           return reply.status(200).send({ loginStatus: 'verifyLogin' })
         }
       } catch {
+        clearAuthCookie(reply)
         return reply.status(500).send({ error: 'Internal server error' })
       }
     },
@@ -230,9 +234,7 @@ export const authRoutes = async (fastify: FastifyInstance) => {
           return reply.status(401).send({ error: 'Unauthorized' })
         }
         if (_getUserType(_user) !== 'full') {
-          return reply
-            .status(400)
-            .send({ error: 'Bad Request: user must be email verified' })
+          return reply.status(401).send({ error: 'Unauthorized' })
         }
         if (
           !_user.loginVerificationCode ||
@@ -245,19 +247,65 @@ export const authRoutes = async (fastify: FastifyInstance) => {
             userId: _user.id,
             loginVerificationCode: verificationCode,
           })
+        if (_loginVerified) {
+          const { _session } = await _createSession(_user.id)
+          setAuthCookie(reply, _session)
+        }
         // TODO: Add an attempts field to give users a number of attempts.
         // For now this is unlimited, which is not ideal.
         const verified = _loginVerified
         let user = verified ? toPublic.user(_checkedUser) : null
         return reply.status(200).send({ user, verified })
       } catch {
+        clearAuthCookie(reply)
         return reply.status(500).send({ error: 'Internal server error' })
       }
     },
   })
 
-  // // Verify email for potential user, will create a full user and session if successful.
-  // fastify.post('/verify-email', {})
+  // Verify email for potential user, will create a full user and session if successful.
+  fastify.post<AuthPOSTVerifyEmail>('/verify-email', {
+    schema: authSchema.POSTVerifyEmail,
+    handler: async (request, reply) => {
+      const { email, verificationCode } = request.body
+      try {
+        const { _user } = await _getUserByEmail(email)
+        if (!_user) {
+          return reply.status(401).send({ error: 'Unauthorized' })
+        }
+        if (_getUserType(_user) !== 'potential') {
+          return reply.status(401).send({ error: 'Unauthorized' })
+        }
+        if (_user.emailVerified) {
+          return reply.status(401).send({ error: 'Unauthorized' })
+        }
+        if (
+          !_user.emailVerificationCode ||
+          !_user.emailVerificationCodeExpiresAt
+        ) {
+          return reply.status(401).send({ error: 'Unauthorized' })
+        }
+        const { _user: _checkedUser, _emailVerified } =
+          await _checkAndVerifyUserEmailVerificationCode({
+            userId: _user.id,
+            emailVerificationCode: verificationCode,
+          })
+        if (_emailVerified) {
+          const { _session } = await _createSession(_user.id)
+          setAuthCookie(reply, _session)
+        }
+        // TODO: Add an attempts field to give users a number of attempts.
+        // For now this is unlimited, which is not ideal.
+        const verified = _emailVerified
+        let user = verified ? toPublic.user(_checkedUser) : null
+        return reply.status(200).send({ user, verified })
+      } catch {
+        clearAuthCookie(reply)
+        return reply.status(500).send({ error: 'Internal server error' })
+      }
+    },
+  })
+
   // // Resend email verification code if expired.
   // fastify.post('/resend-email-verification-code', {})
   // // Log out, remove session.

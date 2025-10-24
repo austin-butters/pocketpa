@@ -31,3 +31,10 @@ export interface AuthPOSTVerifyLogin {
     verificationCode: string
   }
 }
+
+export interface AuthPOSTVerifyEmail {
+  Body: {
+    email: string
+    verificationCode: string
+  }
+}
