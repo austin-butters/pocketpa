@@ -6,35 +6,30 @@ import {
   type _Session,
 } from '#data/internal/session'
 import {
-  _checkAndVerifyUserEmailVerificationCode,
-  _checkAndVerifyUserLoginVerificationCode,
   _createAnonymousUser,
   _createPotentialUser,
   _createPotentialUserFromAnonymousUser,
   _getUser,
   _getUserByBackupCode,
   _getUserByEmail,
-  _getUserType,
-  _refreshUserEmailVerificationCode,
-  _refreshUserLoginVerificationCode,
+  _isAnonymousUser,
+  _refreshVerificationCode,
   type _User,
+  _verifyUserWithVerificationCode,
 } from '#data/internal/user'
-import { clearAllSessionsForUser } from '#data/session'
 import { emailIsTaken, usernameIsTaken } from '#data/user'
-import { authenticated } from '#middleware'
 import {
   type AuthPOSTCheckAvailability,
   type AuthPOSTLogin,
   type AuthPOSTLoginAnonymous,
   type AuthPOSTRegisterPotential,
   type AuthPOSTResendVerificationCode,
-  type AuthPOSTVerifyEmail,
   type AuthPOSTVerifyLogin,
   authSchema,
 } from '#models/auth'
 import { type User } from '#models/user'
 import { type FastifyUnauthenticatedRequest } from '#types/fastify'
-import { toPublic } from '#utils/to-public'
+import { sanitize } from '#utils/sanitize'
 import { type FastifyInstance, FastifyReply } from 'fastify'
 
 const standardSetSignedCookieOptions = {
@@ -72,13 +67,13 @@ export const authRoutes = async (fastify: FastifyInstance) => {
       const token = request.cookies[AUTH_COOKIE_NAME]
       let sessionExists: boolean = false
       let user: User | null = null
-      if (!!token) {
+      if (typeof token === 'string') {
         try {
           const { _session } = await _readCurrentSessionFromToken(token)
-          if (_session) {
+          if (_session !== undefined) {
             const { _user } = await _getUser(_session.userId)
-            if (_user) {
-              user = toPublic.user(_user)
+            if (_user !== undefined) {
+              user = sanitize.user(_user)
               sessionExists = true
             } else {
               clearAuthCookie(reply)
@@ -111,7 +106,7 @@ export const authRoutes = async (fastify: FastifyInstance) => {
   fastify.post('/register-anonymous', {
     handler: async (request: FastifyUnauthenticatedRequest, reply) => {
       const token = request.cookies[AUTH_COOKIE_NAME]
-      if (token) {
+      if (token !== undefined) {
         return reply.status(400).send({
           error: 'Bad Request: must be logged out to register anonymous user',
         })
@@ -120,7 +115,7 @@ export const authRoutes = async (fastify: FastifyInstance) => {
         const { _user } = await _createAnonymousUser()
         const { _session } = await _createSession(_user.id)
         setAuthCookie(reply, _session)
-        const user = toPublic.user(_user)
+        const user = sanitize.user(_user)
         return reply.status(201).send({ user })
       } catch (error) {
         clearAuthCookie(reply)
@@ -138,40 +133,43 @@ export const authRoutes = async (fastify: FastifyInstance) => {
       try {
         let _user: _User
         let _session: _Session
-        if (!token) {
-          // Create new potential user.
+        if (token === undefined) {
+          // If no token, create new potential user.
           _user = (await _createPotentialUser({ email, username }))._user
           _session = (await _createSession(_user.id))._session
         } else {
-          // Create potential user from current anonymous user
+          // Currently logged in, create potential user from current anonymous user
+          // If token invalid (i.e. no session, reject)
           const { _session: _existingSession } =
             await _readCurrentSessionFromToken(token)
-          if (!_existingSession) {
+          if (_existingSession === undefined) {
             clearAuthCookie(reply)
             return reply.status(401).send({ error: 'Unauthorized' })
           }
-
+          // If user from token invalid (i.e. no user, wrong type of user, or non-anonymous user), clear the authentication cookie and reject.
           const { _user: _existingUser } = await _getUser(
             _existingSession.userId
           )
-          // TODO: Internal data functions will throw errors if incorrectly used.
-          // Add more checks like this to prevent bad use of them.
-          // The server should never return 500 during normal behaviour, for any request.
-          if (_getUserType(_existingUser) !== 'anonymous') {
+          if (_existingUser === undefined) {
+            clearAuthCookie(reply)
+            return reply.status(401).send({ error: 'Unauthorized' })
+          }
+          if (!_isAnonymousUser(_existingUser)) {
             return reply.status(403).send({ error: 'Forbidden' })
           }
-
+          // Set session and user.
           _session = (await _refreshSession(_existingSession))._session
           _user = (
             await _createPotentialUserFromAnonymousUser({
-              userId: _session.userId,
+              _user: _existingUser,
               email,
+              username,
             })
           )._user
         }
         // TODO: Send the email verification code.
         setAuthCookie(reply, _session)
-        const user = toPublic.user(_user)
+        const user = sanitize.user(_user)
         return reply.status(201).send({ user })
       } catch (error) {
         clearAuthCookie(reply)
@@ -187,13 +185,12 @@ export const authRoutes = async (fastify: FastifyInstance) => {
       try {
         const { backupCode } = request.body
         const { _user } = await _getUserByBackupCode(backupCode)
-        if (!_user) {
+        if (_user === undefined) {
           return reply.status(401).send({ error: 'Unauthorized' })
         }
-        await clearAllSessionsForUser(_user.id)
         const { _session } = await _createSession(_user.id)
         setAuthCookie(reply, _session)
-        const user = toPublic.user(_user)
+        const user = sanitize.user(_user)
         return reply.status(200).send({ user })
       } catch {
         clearAuthCookie(reply)
@@ -206,23 +203,17 @@ export const authRoutes = async (fastify: FastifyInstance) => {
   fastify.post<AuthPOSTLogin>('/login', {
     schema: authSchema.POSTLogin,
     handler: async (request: FastifyUnauthenticatedRequest, reply) => {
+      clearAuthCookie(reply)
       const { email } = request.body
       try {
         const { _user } = await _getUserByEmail(email)
-        if (!_user) {
+        if (_user === undefined) {
           return reply.status(401).send({ error: 'Unauthorized' })
         }
-        if (_getUserType(_user) === 'potential') {
-          await _refreshUserEmailVerificationCode(_user.id)
-          // TODO: Send verification code
-          return reply.status(200).send({ loginStatus: 'verifyEmail' })
-        } else {
-          await _refreshUserLoginVerificationCode(_user.id)
-          // TODO: Send verification code
-          return reply.status(200).send({ loginStatus: 'verifyLogin' })
-        }
+        await _refreshVerificationCode(_user)
+        // TODO: Send verification code
+        return reply.status(200).send()
       } catch {
-        clearAuthCookie(reply)
         return reply.status(500).send({ error: 'Internal server error' })
       }
     },
@@ -235,74 +226,31 @@ export const authRoutes = async (fastify: FastifyInstance) => {
       const { email, verificationCode } = request.body
       try {
         const { _user } = await _getUserByEmail(email)
-        if (!_user) {
-          return reply.status(401).send({ error: 'Unauthorized' })
-        }
-        if (_getUserType(_user) !== 'full') {
+        if (_user === undefined) {
           return reply.status(401).send({ error: 'Unauthorized' })
         }
         if (
-          !_user.loginVerificationCode ||
-          !_user.loginVerificationCodeExpiresAt
+          _user.verificationCode === null ||
+          _user.verificationCodeExpiresAt === null
         ) {
           return reply.status(401).send({ error: 'Unauthorized' })
         }
-        const { _user: _checkedUser, _loginVerified } =
-          await _checkAndVerifyUserLoginVerificationCode({
-            userId: _user.id,
-            loginVerificationCode: verificationCode,
+        const { _user: _checkedUser, _verified } =
+          await _verifyUserWithVerificationCode({
+            _user,
+            code: verificationCode,
           })
-        if (_loginVerified) {
-          const { _session } = await _createSession(_user.id)
-          setAuthCookie(reply, _session)
-        }
-        // TODO: Add an attempts field to give users a number of attempts.
-        // For now this is unlimited, which is not ideal.
-        const verified = _loginVerified
-        let user = verified ? toPublic.user(_checkedUser) : null
-        return reply.status(200).send({ user, verified })
-      } catch {
-        clearAuthCookie(reply)
-        return reply.status(500).send({ error: 'Internal server error' })
-      }
-    },
-  })
 
-  // Verify email for potential user, will create a full user and session if successful.
-  fastify.post<AuthPOSTVerifyEmail>('/verify-email', {
-    schema: authSchema.POSTVerifyEmail,
-    handler: async (request: FastifyUnauthenticatedRequest, reply) => {
-      const { email, verificationCode } = request.body
-      try {
-        const { _user } = await _getUserByEmail(email)
-        if (!_user) {
-          return reply.status(401).send({ error: 'Unauthorized' })
-        }
-        if (_getUserType(_user) !== 'potential') {
-          return reply.status(401).send({ error: 'Unauthorized' })
-        }
-        if (_user.emailVerified) {
-          return reply.status(401).send({ error: 'Unauthorized' })
-        }
-        if (
-          !_user.emailVerificationCode ||
-          !_user.emailVerificationCodeExpiresAt
-        ) {
-          return reply.status(401).send({ error: 'Unauthorized' })
-        }
-        const { _user: _checkedUser, _emailVerified } =
-          await _checkAndVerifyUserEmailVerificationCode({
-            userId: _user.id,
-            emailVerificationCode: verificationCode,
-          })
-        if (_emailVerified) {
+        if (_verified) {
           const { _session } = await _createSession(_user.id)
           setAuthCookie(reply, _session)
         }
         // TODO: Add an attempts field to give users a number of attempts.
         // For now this is unlimited, which is not ideal.
-        const verified = _emailVerified
-        let user = verified ? toPublic.user(_checkedUser) : null
+        // If potential, roll back to anonymous user after too many failed attempts.
+        // If full or potential, revoke the verification code.
+        const verified = _verified
+        let user = verified ? sanitize.user(_checkedUser) : null
         return reply.status(200).send({ user, verified })
       } catch {
         clearAuthCookie(reply)
@@ -318,18 +266,11 @@ export const authRoutes = async (fastify: FastifyInstance) => {
       const { email } = request.body
       try {
         const { _user } = await _getUserByEmail(email)
-        if (!_user) {
+        if (_user === undefined) {
           return reply.status(401).send({ error: 'Unauthorized' })
         }
-        if (_getUserType(_user) === 'full') {
-          await _refreshUserLoginVerificationCode(_user.id)
-          // TODO: Send the verification code.
-        } else if (_getUserType(_user) === 'potential') {
-          await _refreshUserEmailVerificationCode(_user.id)
-          // TODO: Send the verification code.
-        } else {
-          return reply.status(401).send({ error: 'Unauthorized' })
-        }
+        await _refreshVerificationCode(_user)
+        // TODO: Send the verification code.
         return reply.status(200).send({ resent: true })
       } catch {
         return reply.status(500).send({ error: 'Internal server error' })
@@ -338,14 +279,10 @@ export const authRoutes = async (fastify: FastifyInstance) => {
   })
 
   // Log out, remove session.
-  await fastify.register(
-    authenticated(async (fastify) => {
-      fastify.post('/logout', {
-        handler: async (_, reply) => {
-          clearAuthCookie(reply)
-          return reply.status(204)
-        },
-      })
-    })
-  )
+  fastify.post('/logout', {
+    handler: async (_, reply) => {
+      clearAuthCookie(reply)
+      return reply.status(204).send()
+    },
+  })
 }

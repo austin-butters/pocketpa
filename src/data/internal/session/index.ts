@@ -4,8 +4,8 @@ import { randomBytes } from 'crypto'
 /**
  * WARNING: This is an internal type.
  */
-export type _Session = Awaited<
-  ReturnType<typeof prisma.session.findUniqueOrThrow>
+export type _Session = Readonly<
+  Awaited<ReturnType<typeof prisma.session.findUniqueOrThrow>>
 >
 
 const token = () => randomBytes(32).toString('base64url')

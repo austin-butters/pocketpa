@@ -12,4 +12,4 @@ const user = (user: _User): User => {
   }
 }
 
-export const toPublic = { user }
+export const sanitize = { user }

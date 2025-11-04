@@ -28,10 +28,8 @@ model User {
   backupCode                         String       @unique                     @db.VarChar(43)
   email                              String?      @unique
   emailVerified                      Boolean      @default(false)
-  emailVerificationCode              String?                                  @db.VarChar(6)
-  emailVerificationCodeExpiresAt     DateTime?                                @db.Timestamptz
-  loginVerificationCode              String?
-  loginVerificationCodeExpiresAt     DateTime?                                @db.Timestamptz
+  verificationCode                   String?                                  @db.VarChar(6)
+  verificationCodeExpiresAt          DateTime?                                @db.Timestamptz
   username                           String?                                  @unique
 
   sessions Session[] @relation("Session_user")

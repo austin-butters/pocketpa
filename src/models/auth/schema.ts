@@ -11,7 +11,7 @@ export const GETSessionStatus = {
         },
         user: userSchema.user,
       },
-      required: ['session', 'user'],
+      required: ['sessionExists', 'user'],
       additionalProperties: false,
     } satisfies JSONSchema7,
   },
@@ -97,52 +97,9 @@ export const POSTLogin = {
     required: ['email'],
     additionalProperties: false,
   } satisfies JSONSchema7,
-  response: {
-    200: {
-      type: 'object',
-      properties: {
-        loginStatus: {
-          type: 'string',
-          enum: ['verifyEmail', 'verifyLogin'],
-        },
-      },
-      required: ['loginStatus'],
-      additionalProperties: false,
-    } satisfies JSONSchema7,
-  },
 } as const
 
 export const POSTVerifyLogin = {
-  body: {
-    type: 'object',
-    properties: {
-      email: {
-        type: 'string',
-      },
-      verificationCode: {
-        type: 'string',
-      },
-    },
-    required: ['email', 'verificationCode'],
-  } satisfies JSONSchema7,
-  response: {
-    200: {
-      type: 'object',
-      properties: {
-        user: {
-          anyOf: [userSchema.user, { type: 'null' }],
-        },
-        verified: {
-          type: 'boolean',
-        },
-      },
-      required: ['user', 'verified'],
-      additionalProperties: false,
-    } satisfies JSONSchema7,
-  },
-} as const
-
-export const POSTVerifyEmail = {
   body: {
     type: 'object',
     properties: {
