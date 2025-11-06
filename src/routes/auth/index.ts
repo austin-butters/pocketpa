@@ -28,9 +28,8 @@ import {
   authSchema,
 } from '#models/auth'
 import { type User } from '#models/user'
-import { type FastifyUnauthenticatedRequest } from '#types/fastify'
 import { sanitize } from '#utils/sanitize'
-import { type FastifyInstance, FastifyReply } from 'fastify'
+import { type FastifyInstance, type FastifyReply } from 'fastify'
 
 const standardSetSignedCookieOptions = {
   httpOnly: true,
@@ -63,7 +62,7 @@ export const authRoutes = async (fastify: FastifyInstance) => {
   // Check if a current session exists for the user. If so. If not, client will have to log in or sign up.
   fastify.get('/session-status', {
     schema: authSchema.GETSessionStatus,
-    handler: async (request: FastifyUnauthenticatedRequest, reply) => {
+    handler: async (request, reply) => {
       const token = request.cookies[AUTH_COOKIE_NAME]
       let sessionExists: boolean = false
       let user: User | null = null
@@ -91,7 +90,7 @@ export const authRoutes = async (fastify: FastifyInstance) => {
   // Before registering, allow a user to check if their email or username is available.
   fastify.post<AuthPOSTCheckAvailability>('/check-registration-availability', {
     schema: authSchema.POSTCheckAvailability,
-    handler: async (request: FastifyUnauthenticatedRequest, reply) => {
+    handler: async (request, reply) => {
       const { email, username } = request.body
       try {
         const emailAvailable = !(await emailIsTaken(email))
@@ -104,7 +103,7 @@ export const authRoutes = async (fastify: FastifyInstance) => {
   })
 
   fastify.post('/register-anonymous', {
-    handler: async (request: FastifyUnauthenticatedRequest, reply) => {
+    handler: async (request, reply) => {
       const token = request.cookies[AUTH_COOKIE_NAME]
       if (token !== undefined) {
         return reply.status(400).send({
@@ -127,7 +126,7 @@ export const authRoutes = async (fastify: FastifyInstance) => {
   // Register potential user, either new or from anonymous
   fastify.post<AuthPOSTRegisterPotential>('/register', {
     schema: authSchema.POSTRegisterPotential,
-    handler: async (request: FastifyUnauthenticatedRequest, reply) => {
+    handler: async (request, reply) => {
       const { email, username } = request.body
       const token = request.cookies[AUTH_COOKIE_NAME]
       try {
@@ -181,7 +180,7 @@ export const authRoutes = async (fastify: FastifyInstance) => {
   // Log in with backup code. This works for any type of user, but is intended primarily for anonymous users.
   fastify.post<AuthPOSTLoginAnonymous>('/login-backup', {
     schema: authSchema.POSTLoginAnonymous,
-    handler: async (request: FastifyUnauthenticatedRequest, reply) => {
+    handler: async (request, reply) => {
       try {
         const { backupCode } = request.body
         const { _user } = await _getUserByBackupCode(backupCode)
@@ -202,7 +201,7 @@ export const authRoutes = async (fastify: FastifyInstance) => {
   // Log in potential or full user with email. If potential, will need to verify email, otherwise will need to verify login.
   fastify.post<AuthPOSTLogin>('/login', {
     schema: authSchema.POSTLogin,
-    handler: async (request: FastifyUnauthenticatedRequest, reply) => {
+    handler: async (request, reply) => {
       clearAuthCookie(reply)
       const { email } = request.body
       try {
@@ -222,7 +221,7 @@ export const authRoutes = async (fastify: FastifyInstance) => {
   // Verify login for full user with email verification code
   fastify.post<AuthPOSTVerifyLogin>('/verify-login', {
     schema: authSchema.POSTVerifyLogin,
-    handler: async (request: FastifyUnauthenticatedRequest, reply) => {
+    handler: async (request, reply) => {
       const { email, verificationCode } = request.body
       try {
         const { _user } = await _getUserByEmail(email)
@@ -262,7 +261,7 @@ export const authRoutes = async (fastify: FastifyInstance) => {
   // Resend email/login verification code if expired.
   fastify.post<AuthPOSTResendVerificationCode>('/resend-verification-code', {
     schema: authSchema.POSTResendVerificationCode,
-    handler: async (request: FastifyUnauthenticatedRequest, reply) => {
+    handler: async (request, reply) => {
       const { email } = request.body
       try {
         const { _user } = await _getUserByEmail(email)

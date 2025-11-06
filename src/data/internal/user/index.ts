@@ -1,16 +1,6 @@
-import { type PartialClient, prisma } from '#lib/prisma'
+import { type PartialClient, type Prisma, prisma } from '#lib/prisma'
 import { CreatePotentialUserData } from '#models/user'
 import { randomBytes } from 'crypto'
-
-type WithNoVerificationCodeFields = Readonly<{
-  verificationCode: null
-  verificationCodeExpiresAt: null
-}>
-
-type WithBothVerificationCodeFields = Readonly<{
-  verificationCode: string
-  verificationCodeExpiresAt: Date
-}>
 
 type _UnvalidatedUser = Readonly<
   Awaited<ReturnType<typeof prisma.user.findUniqueOrThrow>>
@@ -20,8 +10,54 @@ type _UnvalidatedUser = Readonly<
  * WARNING: This is an internal type
  */
 export type _User = _UnvalidatedUser &
-  (WithNoVerificationCodeFields | WithBothVerificationCodeFields)
+  Readonly<
+    | { verificationCode: null; verificationCodeExpiresAt: null }
+    | { verificationCode: string; verificationCodeExpiresAt: Date }
+  > &
+  Readonly<
+    | {
+        email: null
+        emailVerified: false
+        username: null
+        verificationCode: null
+        verificationCodeExpiresAt: null
+      }
+    | {
+        email: string
+        username: string
+        emailVerified: false
+        verificationCode: string
+        verificationCodeExpiresAt: Date
+      }
+    | {
+        email: string
+        username: string
+        emailVerified: true
+      }
+  >
 
+/**
+ * WARNING: This is an internal type
+ */
+export type _UserCreateInput = Prisma.UserCreateInput & {
+  id?: never
+  createdAt?: never
+  updatedAt?: never
+  emailVerified?: never
+} & (
+    | {
+        email?: never
+        username?: never
+        verificationCode?: never
+        verificationCodeExpiresAt?: never
+      }
+    | {
+        email: string
+        username: string
+        verificationCode: string
+        verificationCodeExpiresAt: Date
+      }
+  )
 /**
  * WARNING: This is an internal type.
  */
@@ -30,8 +66,9 @@ export type _AnonymousUser = _User &
     email: null
     emailVerified: false
     username: null
-  }> &
-  WithNoVerificationCodeFields
+    verificationCode: null
+    verificationCodeExpiresAt: null
+  }>
 
 /**
  * WARNING: This is an internal type.
@@ -41,6 +78,8 @@ export type _PotentialUser = _User &
     email: string
     emailVerified: false
     username: string
+    verificationCode: string
+    verificationCodeExpiresAt: Date
   }>
 
 /**
@@ -53,70 +92,245 @@ export type _FullUser = _User &
     username: string
   }>
 
-const backupCode = () => randomBytes(32).toString('base64url')
+export const _isValidUserType = (
+  // TODO: Update validation to match new types, update type flow to extend most cleanly.
+  _unvalidatedUser: _UnvalidatedUser
+): _unvalidatedUser is _User => {
+  const {
+    verificationCode,
+    verificationCodeExpiresAt,
+    email,
+    emailVerified,
+    username,
+  } = _unvalidatedUser
 
-const verificationCode = () =>
-  randomBytes(3).readUIntLE(0, 3).toString().padStart(6, '0').slice(0, 6)
+  const hasBothVerificationFields =
+    typeof verificationCode === 'string' &&
+    verificationCodeExpiresAt instanceof Date
+  const hasNeitherVerificationFields =
+    verificationCode === null && verificationCodeExpiresAt === null
+  const verificationFieldsAreValid =
+    hasBothVerificationFields || hasNeitherVerificationFields
 
-const inOneHour = () => new Date(Date.now() + 60 * 60 * 1000)
+  if (!verificationFieldsAreValid) {
+    return false
+  }
+
+  const hasBothEmailAndUsernameFields =
+    typeof email === 'string' && typeof username === 'string'
+  const hasNeitherEmailOrUsernameFields = email === null && username === null
+  const emailAndUsernameFieldsAreValid =
+    hasBothEmailAndUsernameFields || hasNeitherEmailOrUsernameFields
+
+  if (!emailAndUsernameFieldsAreValid) {
+    return false
+  }
+
+  const isValidAnonymousUser =
+    hasNeitherEmailOrUsernameFields &&
+    !emailVerified &&
+    hasNeitherVerificationFields
+  const isValidPotentialUser =
+    hasBothEmailAndUsernameFields && !emailVerified && hasBothVerificationFields
+  const isValidFullUser = hasBothEmailAndUsernameFields && emailVerified
+
+  const isValidUser =
+    isValidAnonymousUser || isValidPotentialUser || isValidFullUser
+
+  return isValidUser
+}
+
+/**
+ * WARNING: This is an internal function.
+ */
+export const _isAnonymousUser = (_user: _User): _user is _AnonymousUser => {
+  const {
+    email,
+    emailVerified,
+    username,
+    verificationCode,
+    verificationCodeExpiresAt,
+  } = _user
+  return (
+    email === null &&
+    !emailVerified &&
+    username === null &&
+    verificationCode === null &&
+    verificationCodeExpiresAt === null
+  )
+}
+
+/**
+ * WARNING: This is an internal function.
+ */
+export const _isPotentialUser = (_user: _User): _user is _PotentialUser => {
+  const {
+    email,
+    emailVerified,
+    username,
+    verificationCode,
+    verificationCodeExpiresAt,
+  } = _user
+  return (
+    typeof email === 'string' &&
+    !emailVerified &&
+    typeof username === 'string' &&
+    verificationCode === null &&
+    verificationCodeExpiresAt === null
+  )
+}
+
+/**
+ * WARNING: This is an internal function.
+ */
+export const _isFullUser = (_user: _User): _user is _FullUser => {
+  const { email, emailVerified, username } = _user
+  return (
+    typeof email === 'string' && emailVerified && typeof username === 'string'
+  )
+}
+
+/**
+ * WARNING: This is an internal function.
+ */
+export const _validateUserType = async (
+  _unvalidatedUser: _UnvalidatedUser,
+  client: PartialClient = prisma
+): Promise<{ _user: _User }> => {
+  if (_isValidUserType(_unvalidatedUser)) {
+    return { _user: _unvalidatedUser }
+  }
+
+  if (client === prisma) {
+    return prisma.$transaction((client) =>
+      _validateUserType(_unvalidatedUser, client)
+    )
+  }
+
+  // All the below code exists only for a non-valid user. This should hopefully never be reached.
+  // Since fields are invalid, we cannot check _isAnonymousUser or similar, as we don't have a valid _User to pass in.
+  const { id, email, emailVerified, username } = _unvalidatedUser
+  // If the user is emailVerified with an email, but does not have a username, throw an error.
+  // This should never happen as we'll add a creation function that enforces validity.
+  // We have no other way to deal with this is we can neither revert email verification or make up a username.
+  if (emailVerified && typeof email === 'string' && username === null) {
+    throw new Error('Cannot validate user with verified email but no username.')
+  }
+  // As user has invalid fields, immediately revoke verification code.
+  // If user is potential (does not have a verified email), revert to anonymous, deleting username and email, ensuring emailVerified is false.
+  const _user = (await client.user.update({
+    where: { id },
+    data: {
+      verificationCode: null,
+      verificationCodeExpiresAt: null,
+      ...(email === null || !emailVerified
+        ? {
+            email: null,
+            emailVerified: false,
+            username: null,
+          }
+        : undefined),
+    },
+  })) as _UnvalidatedUser & {
+    // Update nullifies verification fields.
+    verificationCode: null
+    verificationCodeExpiresAt: null
+  } & ( // Update may also remove identity fields.
+      | { email: null; emailVerified: false; username: null }
+      // but if not, email must be verified. Previous throw ensures username is a string
+      | { email: string; emailVerified: true; username: string }
+    )
+
+  return { _user }
+}
 
 /**
  * WARNING: This is an internal function.
  */
 export const _validateUser = async (
-  _user: _UnvalidatedUser,
+  _unvalidatedUser: _UnvalidatedUser,
   client: PartialClient = prisma
 ): Promise<{ _user: _User }> => {
   if (client === prisma) {
-    return prisma.$transaction((client) => _validateUser(_user, client))
+    return prisma.$transaction((client) =>
+      _validateUser(_unvalidatedUser, client)
+    )
   }
 
+  let { _user } = await _validateUserType(_unvalidatedUser, client)
   if (
-    _user.verificationCode === null &&
-    _user.verificationCodeExpiresAt === null
-  ) {
-    return { _user: _user as _UnvalidatedUser & WithNoVerificationCodeFields }
-  }
-  if (
-    typeof _user.email === 'string' &&
-    typeof _user.verificationCode === 'string' &&
-    _user.verificationCodeExpiresAt instanceof Date &&
+    _user.verificationCodeExpiresAt === null ||
     _user.verificationCodeExpiresAt > new Date()
   ) {
-    return { _user: _user as _UnvalidatedUser & WithBothVerificationCodeFields }
+    return { _user }
   }
-  const _updated = (await client.user.update({
+  _user = (await client.user.update({
     where: { id: _user.id },
     data: {
       verificationCode: null,
       verificationCodeExpiresAt: null,
-      ...(typeof _user.email === 'string' && !_user.emailVerified
-        ? {
-            email: null,
-            emailVerified: false,
-          }
+      ...(_isPotentialUser(_user)
+        ? { email: null, username: null }
         : undefined),
     },
-  })) as _UnvalidatedUser & WithNoVerificationCodeFields
-  return { _user: _updated }
+  })) as _User
+  return { _user }
+}
+
+/**
+ * WARNING: This is an internal function.
+ */
+export const _getUserFromFindUniqueInputAndValidate = async (
+  input: Prisma.UserFindUniqueArgs,
+  client: PartialClient = prisma
+): Promise<{ _user: _User | undefined }> => {
+  if (client === prisma) {
+    return prisma.$transaction((client) =>
+      _getUserFromFindUniqueInputAndValidate(input, client)
+    )
+  }
+
+  const _unvalidated = await client.user.findUnique(input)
+  if (_unvalidated === null) {
+    return { _user: undefined }
+  }
+  const { _user } = await _validateUser(_unvalidated, client)
+  return { _user }
+}
+
+/**
+ * WARNING: This is an internal function.
+ */
+export const _createUserFromValidCreateInput = async (
+  input: _User,
+  client: PartialClient = prisma
+): Promise<{ _user: _User }> => {
+  if (client === prisma) {
+    return prisma.$transaction((client) =>
+      _createUserFromValidCreateInput(input, client)
+    )
+  }
+
+  const _user = client.user.create({ data: input })
 }
 
 /**
  * WARNING: This is an internal function.
  */
 export const _getUser = async (
-  userId: string,
+  id: string,
   client: PartialClient = prisma
 ): Promise<{ _user: _User | undefined }> => {
   if (client === prisma) {
-    return prisma.$transaction(async (client) => _getUser(userId, client))
+    return prisma.$transaction(async (client) => _getUser(id, client))
   }
 
-  const _unvalidatedUser = await client.user.findUnique({
-    where: { id: userId },
-  })
-  if (!_unvalidatedUser) return { _user: undefined }
-  const { _user } = await _validateUser(_unvalidatedUser)
+  const { _user } = await _getUserFromFindUniqueInputAndValidate(
+    {
+      where: { id },
+    },
+    client
+  )
   return { _user }
 }
 
@@ -133,11 +347,12 @@ export const _getUserByBackupCode = async (
     )
   }
 
-  const _unvalidatedUser = await client.user.findUnique({
-    where: { backupCode },
-  })
-  if (!_unvalidatedUser) return { _user: undefined }
-  const { _user } = await _validateUser(_unvalidatedUser)
+  const { _user } = await _getUserFromFindUniqueInputAndValidate(
+    {
+      where: { backupCode },
+    },
+    client
+  )
   return { _user }
 }
 
@@ -152,40 +367,27 @@ export const _getUserByEmail = async (
     return prisma.$transaction(async (client) => _getUserByEmail(email, client))
   }
 
-  const _unvalidatedUser = await client.user.findUnique({ where: { email } })
-  if (!_unvalidatedUser) return { _user: undefined }
-  const { _user } = await _validateUser(_unvalidatedUser)
-  return { _user: _user as _PotentialUser | _FullUser }
+  const { _user } = await _getUserFromFindUniqueInputAndValidate(
+    {
+      where: { email },
+    },
+    client
+  )
+  if (_user === undefined) {
+    return { _user }
+  }
+  if (!_isPotentialUser(_user) && !_isFullUser(_user)) {
+    throw new Error('Found an invalid user when querying by email')
+  }
+  return { _user }
 }
 
-/**
- * WARNING: This is an internal function.
- */
-export const _getUserType = (_user: _User) => {
-  return _user.email === null
-    ? 'anonymous'
-    : !_user.emailVerified
-    ? 'potential'
-    : 'full'
-}
+const generateBackupCode = () => randomBytes(32).toString('base64url')
 
-/**
- * WARNING: This is an internal function.
- */
-export const _isAnonymousUser = (_user: _User): _user is _AnonymousUser =>
-  _getUserType(_user) === 'anonymous'
+const generateVerificationCode = () =>
+  randomBytes(3).readUIntLE(0, 3).toString().padStart(6, '0').slice(0, 6)
 
-/**
- * WARNING: This is an internal function.
- */
-export const _isPotentialUser = (_user: _User): _user is _PotentialUser =>
-  _getUserType(_user) === 'potential'
-
-/**
- * WARNING: This is an internal function.
- */
-export const _isFullUser = (_user: _User): _user is _FullUser =>
-  _getUserType(_user) === 'full'
+const inOneHour = () => new Date(Date.now() + 60 * 60 * 1000)
 
 /**
  * WARNING: This is an internal function.
@@ -203,29 +405,41 @@ export const _refreshVerificationCode = async (
   _user = (await client.user.update({
     where: { id: _user.id },
     data: {
-      verificationCode: verificationCode(),
+      verificationCode: generateVerificationCode(),
       verificationCodeExpiresAt: inOneHour(),
     },
   })) as _PotentialUser | _FullUser
   return { _user }
 }
 
+//////////
+//////////
+//////////
+//////////
+//////////
+//////////
+//////////
+
 /**
  * WARNING: This is an internal function.
  */
 export const _clearVerificationCode = async (
-  userId: string,
+  _user: _User,
   client: PartialClient = prisma
 ): Promise<{ _user: _User }> => {
   if (client === prisma) {
     return prisma.$transaction(async (client) =>
-      _clearVerificationCode(userId, client)
+      _clearVerificationCode(_user, client)
     )
   }
-  const _user = (await client.user.update({
-    where: { id: userId },
+  const _unvalidated = await client.user.update({
+    where: { id: _user.id },
     data: { verificationCode: null, verificationCodeExpiresAt: null },
-  })) as _UnvalidatedUser & WithNoVerificationCodeFields
+  })
+  if (!_isValidUserType(_unvalidated)) {
+    // TO DO - Replace this with type enforced functionality
+    throw new Error('Cleared verification code resulted in invalid user.')
+  }
   return { _user }
 }
 
@@ -298,7 +512,7 @@ export const _createAnonymousUser = async (
     return prisma.$transaction(async (client) => _createAnonymousUser(client))
   }
   const _user = (await client.user.create({
-    data: { backupCode: backupCode() },
+    data: { backupCode: generateBackupCode() },
   })) as _AnonymousUser
   return { _user }
 }
@@ -320,8 +534,8 @@ export const _createPotentialUser = async (
     data: {
       email,
       username,
-      backupCode: backupCode(),
-      verificationCode: verificationCode(),
+      backupCode: generateBackupCode(),
+      verificationCode: generateVerificationCode(),
       verificationCodeExpiresAt: inOneHour(),
     },
   })) as _UnvalidatedUser &
@@ -356,7 +570,7 @@ export const _createPotentialUserFromAnonymousUser = async (
     data: {
       email,
       username,
-      verificationCode: verificationCode(),
+      verificationCode: generateVerificationCode(),
       verificationCodeExpiresAt: inOneHour(),
     },
   })) as _UnvalidatedUser &
