@@ -1,10 +1,10 @@
-// TODO: Remove type assertions when possible.
 // TODO: Create valid update type and helper function.
 // TODO: Fix and improve _UserCreateInput type and usage.
 // TODO: Only export functions that will and should be used outside of this file.
 // TODO: Improve logic for layering validation and processes here.
-// TODO: Setup invariant processes, skipped in production.
+// TODO: Clean up use of Readonly<>.
 
+import { invariantType } from '#lib/invariant'
 import { type PartialClient, type Prisma, prisma } from '#lib/prisma'
 import { type CreatePotentialUserData } from '#models/user'
 import { randomBytes } from 'crypto'
@@ -172,61 +172,10 @@ export const _isFullUser = (_user: _User): _user is _FullUser => {
 /**
  * WARNING: This is an internal function.
  */
-export const invariantValidUser: (
-  _user: _UnvalidatedUser
-) => asserts _user is _User = (_user: _UnvalidatedUser) => {
-  if (!_isValidUser(_user)) {
-    throw new Error('invariantValidUser: assertion failed')
-  }
-}
-
-/**
- * WARNING: This is an internal function.
- */
-export const invariantAnonymousUser: (
-  _user: _UnvalidatedUser
-) => asserts _user is _AnonymousUser = (_user: _UnvalidatedUser) => {
-  if (!_isValidUser(_user) || !_isAnonymousUser(_user)) {
-    throw new Error('invariantAnonymousUser: assertion failed')
-  }
-}
-
-/**
- * WARNING: This is an internal function.
- */
-export const invariantPotentialUser: (
-  _user: _UnvalidatedUser
-) => asserts _user is _PotentialUser = (_user: _UnvalidatedUser) => {
-  if (!_isValidUser(_user) || !_isPotentialUser(_user)) {
-    throw new Error('invariantPotentialUser: assertion failed')
-  }
-}
-
-/**
- * WARNING: This is an internal function.
- */
-export const invariantFullUser: (
-  _user: _UnvalidatedUser
-) => asserts _user is _FullUser = (_user: _UnvalidatedUser) => {
-  if (!_isValidUser(_user) || !_isFullUser(_user)) {
-    throw new Error('invariantFullUser: assertion failed')
-  }
-}
-
-/**
- * WARNING: This is an internal function.
- */
-export const invariantPotentialOrFullUser: (
-  _user: _UnvalidatedUser
-) => asserts _user is _PotentialUser | _FullUser = (
-  _user: _UnvalidatedUser
-) => {
-  if (
-    !_isValidUser(_user) ||
-    (!_isPotentialUser(_user) && !_isFullUser(_user))
-  ) {
-    throw new Error('invariantPotentialOrFullUser: assertion failed')
-  }
+export const _isPotentialOrFullUser = (
+  _user: _User
+): _user is _PotentialUser | _FullUser => {
+  return _isPotentialUser(_user) || _isFullUser(_user)
 }
 
 /**
@@ -253,7 +202,7 @@ export const _validateUser = async (
   // This should never happen as we'll add a creation function that enforces validity.
   // We have no other way to deal with this is we can neither revert email verification or make up a username.
   if (emailVerified && typeof email === 'string' && username === null) {
-    throw new Error('Cannot validate user with verified email but no username.')
+    throw new Error('Cannot validate user with verified email but no username.') // TODO: Decide on how to error handle. Ideally should not throw.
   }
   const _user = await client.user.update({
     where: { id },
@@ -271,7 +220,7 @@ export const _validateUser = async (
         : undefined),
     },
   })
-  invariantValidUser(_user)
+  invariantType(_user, _isValidUser, '_validateUser expected valid user')
   return { _user }
 }
 
@@ -310,7 +259,11 @@ export const _createUserFromValidCreateInput = async (
   }
 
   const _user = await client.user.create({ data: input })
-  invariantValidUser(_user)
+  invariantType(
+    _user,
+    _isValidUser,
+    '_createUserFromValidCreateInput expected valid user'
+  )
   return { _user }
 }
 
@@ -376,7 +329,13 @@ export const _getUserByEmail = async (
   if (_user === undefined) {
     return { _user }
   }
-  invariantPotentialOrFullUser(_user)
+
+  invariantType(_user, _isValidUser, '_getUserByEmail expected valid user')
+  invariantType(
+    _user,
+    _isPotentialOrFullUser,
+    '_getUserByEmail expected potential or full user'
+  )
   return { _user }
 }
 
@@ -407,7 +366,16 @@ export const _refreshVerificationCode = async (
       verificationCodeExpiresAt: inOneHour(),
     },
   })
-  invariantPotentialOrFullUser(_updated)
+  invariantType(
+    _updated,
+    _isValidUser,
+    '_refreshVerificationCode expected valid user'
+  )
+  invariantType(
+    _updated,
+    _isPotentialOrFullUser,
+    '_refreshVerificationCode expected potential or full user'
+  )
   return { _user: _updated }
 }
 
@@ -428,7 +396,16 @@ export const _clearVerificationCode = async (
     where: { id: _user.id },
     data: { verificationCode: null, verificationCodeExpiresAt: null },
   })
-  invariantPotentialOrFullUser(_updated)
+  invariantType(
+    _updated,
+    _isValidUser,
+    '_clearVerificationCode expected valid user'
+  )
+  invariantType(
+    _updated,
+    _isPotentialOrFullUser,
+    '_clearVerificationCode expected potential or full user'
+  )
   return { _user: _updated }
 }
 
@@ -458,7 +435,16 @@ export const _verifyUserWithVerificationCode = async (
         verificationCodeExpiresAt: null,
       },
     })
-    invariantPotentialOrFullUser(_updated)
+    invariantType(
+      _updated,
+      _isValidUser,
+      '_verifyUserWithVerificationCode expected valid user'
+    )
+    invariantType(
+      _updated,
+      _isPotentialOrFullUser,
+      '_verifyUserWithVerificationCode expected potential or full user'
+    )
     return { _user: _updated, _verified }
   }
 
@@ -471,7 +457,16 @@ export const _verifyUserWithVerificationCode = async (
         verificationCodeExpiresAt: null,
       },
     })
-    invariantPotentialOrFullUser(_updated)
+    invariantType(
+      _updated,
+      _isValidUser,
+      '_verifyUserWithVerificationCode expected valid user'
+    )
+    invariantType(
+      _updated,
+      _isPotentialOrFullUser,
+      '_verifyUserWithVerificationCode expected potential or full user'
+    )
     return { _user: _updated, _verified }
   }
 
@@ -489,7 +484,16 @@ export const _verifyUserWithVerificationCode = async (
       ...(!_user.emailVerified ? { emailVerified: true } : undefined),
     },
   })
-  invariantPotentialOrFullUser(_updated)
+  invariantType(
+    _updated,
+    _isValidUser,
+    '_verifyUserWithVerificationCode expected valid user'
+  )
+  invariantType(
+    _updated,
+    _isPotentialOrFullUser,
+    '_verifyUserWithVerificationCode expected potential or full user'
+  )
   _verified = true
   return { _user: _updated, _verified }
 }
@@ -509,7 +513,12 @@ export const _createAnonymousUser = async (
     },
     client
   )
-  invariantAnonymousUser(_user)
+  invariantType(_user, _isValidUser, '_createAnonymousUser expected valid user')
+  invariantType(
+    _user,
+    _isAnonymousUser,
+    '_createAnonymousUser expected anonymous user'
+  )
   return { _user }
 }
 
@@ -536,7 +545,12 @@ export const _createPotentialUser = async (
     },
     client
   )
-  invariantPotentialUser(_user)
+  invariantType(_user, _isValidUser, '_createPotentialUser expected valid user')
+  invariantType(
+    _user,
+    _isPotentialUser,
+    '_createPotentialUser expected potential user'
+  )
   return { _user }
 }
 
@@ -566,7 +580,16 @@ export const _createPotentialUserFromAnonymousUser = async (
       verificationCodeExpiresAt: inOneHour(),
     },
   })
-  invariantPotentialUser(_updated)
+  invariantType(
+    _updated,
+    _isValidUser,
+    '_createPotentialUserFromAnonymousUser expected valid user'
+  )
+  invariantType(
+    _updated,
+    _isPotentialUser,
+    '_createPotentialUserFromAnonymousUser expected potential user'
+  )
   return { _user: _updated }
 }
 
@@ -593,6 +616,15 @@ export const _revertPotentialUserToAnonymousUser = async (
       username: null,
     },
   })
-  invariantAnonymousUser(_updated)
+  invariantType(
+    _updated,
+    _isValidUser,
+    '_revertPotentialUserToAnonymousUser expected valid user'
+  )
+  invariantType(
+    _updated,
+    _isAnonymousUser,
+    '_revertPotentialUserToAnonymousUser expected anonymous user'
+  )
   return { _user: _updated }
 }
