@@ -1,4 +1,4 @@
-import { Model } from '#models/base'
+import { type Model } from '#models/base'
 
 export interface CreatePotentialUserData {
   email: string

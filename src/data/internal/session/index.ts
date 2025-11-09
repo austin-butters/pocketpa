@@ -1,4 +1,4 @@
-import { PartialClient, prisma } from '#lib/prisma'
+import { type PartialClient, prisma } from '#lib/prisma'
 import { randomBytes } from 'crypto'
 
 /**

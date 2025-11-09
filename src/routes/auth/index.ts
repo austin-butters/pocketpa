@@ -1,6 +1,7 @@
 import { AUTH_COOKIE_NAME } from '#config'
 import {
   _createSession,
+  _deleteSession,
   _readCurrentSessionFromToken,
   _refreshSession,
   type _Session,
@@ -279,7 +280,18 @@ export const authRoutes = async (fastify: FastifyInstance) => {
 
   // Log out, remove session.
   fastify.post('/logout', {
-    handler: async (_, reply) => {
+    handler: async (request, reply) => {
+      const token = request.cookies[AUTH_COOKIE_NAME]
+      if (typeof token === 'string') {
+        try {
+          const { _session } = await _readCurrentSessionFromToken(token)
+          if (_session !== undefined) {
+            await _deleteSession(_session.id)
+          }
+        } catch {
+          return reply.status(500).send({ error: 'Internal server error' })
+        }
+      }
       clearAuthCookie(reply)
       return reply.status(204).send()
     },
