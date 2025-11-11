@@ -30,7 +30,11 @@ import {
 } from '#models/auth'
 import { type User } from '#models/user'
 import { sanitize } from '#utils/sanitize'
-import { type FastifyInstance, type FastifyReply } from 'fastify'
+import {
+  type FastifyInstance,
+  type FastifyReply,
+  type FastifyRequest,
+} from 'fastify'
 
 const standardSetSignedCookieOptions = {
   httpOnly: true,
@@ -59,12 +63,14 @@ export const clearAuthCookie = (reply: FastifyReply) => {
   reply.clearCookie(AUTH_COOKIE_NAME, standardClearSignedCookieOptions)
 }
 
+const getToken = (request: FastifyRequest) => request.cookies[AUTH_COOKIE_NAME]
+
 export const authRoutes = async (fastify: FastifyInstance) => {
   // Check if a current session exists for the user. If so. If not, client will have to log in or sign up.
   fastify.get('/session-status', {
     schema: authSchema.GETSessionStatus,
     handler: async (request, reply) => {
-      const token = request.cookies[AUTH_COOKIE_NAME]
+      const token = getToken(request)
       let sessionExists: boolean = false
       let user: User | null = null
       if (typeof token === 'string') {
@@ -105,7 +111,7 @@ export const authRoutes = async (fastify: FastifyInstance) => {
 
   fastify.post('/register-anonymous', {
     handler: async (request, reply) => {
-      const token = request.cookies[AUTH_COOKIE_NAME]
+      const token = getToken(request)
       if (token !== undefined) {
         return reply.status(400).send({
           error: 'Bad Request: must be logged out to register anonymous user',
@@ -129,7 +135,7 @@ export const authRoutes = async (fastify: FastifyInstance) => {
     schema: authSchema.POSTRegisterPotential,
     handler: async (request, reply) => {
       const { email, username } = request.body
-      const token = request.cookies[AUTH_COOKIE_NAME]
+      const token = getToken(request)
       try {
         let _user: _User
         let _session: _Session
@@ -281,7 +287,7 @@ export const authRoutes = async (fastify: FastifyInstance) => {
   // Log out, remove session.
   fastify.post('/logout', {
     handler: async (request, reply) => {
-      const token = request.cookies[AUTH_COOKIE_NAME]
+      const token = getToken(request)
       if (typeof token === 'string') {
         try {
           const { _session } = await _readCurrentSessionFromToken(token)

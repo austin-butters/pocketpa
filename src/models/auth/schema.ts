@@ -1,5 +1,5 @@
 import { userSchema } from '#models/user'
-import { JSONSchema7 } from 'jsonschema7'
+import { type JSONSchema7 } from 'jsonschema7'
 
 export const GETSessionStatus = {
   response: {

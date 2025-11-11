@@ -1,4 +1,4 @@
-import { CreatePotentialUserData } from '#models/user'
+import { type CreatePotentialUserData } from '#models/user'
 
 export interface AuthPOSTCheckAvailability {
   Body: CreatePotentialUserData
