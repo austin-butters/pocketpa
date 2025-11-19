@@ -26,15 +26,15 @@ import {
   type AuthPOSTRegisterPotential,
   type AuthPOSTResendVerificationCode,
   type AuthPOSTVerifyLogin,
-  authSchema,
 } from '#models/auth'
-import { type User } from '#models/user'
 import { sanitize } from '#utils/sanitize'
+import { $q } from '@austin-butters/quickschema'
 import {
   type FastifyInstance,
   type FastifyReply,
   type FastifyRequest,
 } from 'fastify'
+import { sessionStatusRoutes } from './session-status'
 
 const standardSetSignedCookieOptions = {
   httpOnly: true,
@@ -66,37 +66,13 @@ export const clearAuthCookie = (reply: FastifyReply) => {
 const getToken = (request: FastifyRequest) => request.cookies[AUTH_COOKIE_NAME]
 
 export const authRoutes = async (fastify: FastifyInstance) => {
-  // Check if a current session exists for the user. If so. If not, client will have to log in or sign up.
-  fastify.get('/session-status', {
-    schema: authSchema.GETSessionStatus,
-    handler: async (request, reply) => {
-      const token = getToken(request)
-      let sessionExists: boolean = false
-      let user: User | null = null
-      if (typeof token === 'string') {
-        try {
-          const { _session } = await _readCurrentSessionFromToken(token)
-          if (_session !== undefined) {
-            const { _user } = await _getUser(_session.userId)
-            if (_user !== undefined) {
-              user = sanitize.user(_user)
-              sessionExists = true
-            } else {
-              clearAuthCookie(reply)
-            }
-          }
-        } catch {
-          clearAuthCookie(reply)
-          return reply.status(500).send({ error: 'Internal server error' })
-        }
-      }
-      return reply.status(200).send({ sessionExists, user })
-    },
-  })
+  fastify.register(sessionStatusRoutes, { prefix: 'session-status' })
 
   // Before registering, allow a user to check if their email or username is available.
   fastify.post<AuthPOSTCheckAvailability>('/check-registration-availability', {
-    schema: authSchema.POSTCheckAvailability,
+    schema: {
+      body: $q({ email: 'string', username: 'string' }),
+    },
     handler: async (request, reply) => {
       const { email, username } = request.body
       try {
@@ -110,6 +86,9 @@ export const authRoutes = async (fastify: FastifyInstance) => {
   })
 
   fastify.post('/register-anonymous', {
+    schema: {
+      body: $q({}),
+    },
     handler: async (request, reply) => {
       const token = getToken(request)
       if (token !== undefined) {
@@ -132,7 +111,9 @@ export const authRoutes = async (fastify: FastifyInstance) => {
 
   // Register potential user, either new or from anonymous
   fastify.post<AuthPOSTRegisterPotential>('/register', {
-    schema: authSchema.POSTRegisterPotential,
+    schema: {
+      body: $q({ email: 'string', username: 'string' }),
+    },
     handler: async (request, reply) => {
       const { email, username } = request.body
       const token = getToken(request)
@@ -186,7 +167,9 @@ export const authRoutes = async (fastify: FastifyInstance) => {
 
   // Log in with backup code. This works for any type of user, but is intended primarily for anonymous users.
   fastify.post<AuthPOSTLoginAnonymous>('/login-backup', {
-    schema: authSchema.POSTLoginAnonymous,
+    schema: {
+      body: $q({ backupCode: 'string' }),
+    },
     handler: async (request, reply) => {
       try {
         const { backupCode } = request.body
@@ -207,7 +190,9 @@ export const authRoutes = async (fastify: FastifyInstance) => {
 
   // Log in potential or full user with email. If potential, will need to verify email, otherwise will need to verify login.
   fastify.post<AuthPOSTLogin>('/login', {
-    schema: authSchema.POSTLogin,
+    schema: {
+      body: $q({ email: 'string' }),
+    },
     handler: async (request, reply) => {
       clearAuthCookie(reply)
       const { email } = request.body
@@ -227,7 +212,9 @@ export const authRoutes = async (fastify: FastifyInstance) => {
 
   // Verify login for full user with email verification code
   fastify.post<AuthPOSTVerifyLogin>('/verify-login', {
-    schema: authSchema.POSTVerifyLogin,
+    schema: {
+      body: $q({ email: 'string', verificationCode: 'string' }),
+    },
     handler: async (request, reply) => {
       const { email, verificationCode } = request.body
       try {
@@ -267,7 +254,9 @@ export const authRoutes = async (fastify: FastifyInstance) => {
 
   // Resend email/login verification code if expired.
   fastify.post<AuthPOSTResendVerificationCode>('/resend-verification-code', {
-    schema: authSchema.POSTResendVerificationCode,
+    schema: {
+      body: $q({ email: 'string' }),
+    },
     handler: async (request, reply) => {
       const { email } = request.body
       try {

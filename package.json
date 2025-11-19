@@ -12,6 +12,7 @@
     "db:migrate": "prisma migrate dev"
   },
   "dependencies": {
+    "@austin-butters/quickschema": "^1.0.0",
     "@fastify/cookie": "^7.4.0",
     "@fastify/static": "^6.12.0",
     "@prisma/client": "^5.7.1",
