@@ -5,6 +5,10 @@ import fastifyCookie from '@fastify/cookie'
 import fastifyStatic from '@fastify/static'
 import Fastify from 'fastify'
 import path from 'path'
+import { fileURLToPath } from 'url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 const server = Fastify({
   logger: true,
@@ -31,7 +35,7 @@ const start = async () => {
       return reply.sendFile('index.html')
     })
 
-    await server.listen({ port: PORT })
+    await server.listen({ port: PORT, host: '0.0.0.0' })
     console.log(`Server is listening on port ${PORT}`)
   } catch (err) {
     server.log.error(err)
