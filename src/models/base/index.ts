@@ -1,2 +1,1 @@
-export * as baseSchema from './schema'
-export * from './types'
+export * from './types.js'

@@ -1,8 +1,8 @@
 import type { FastifyInstance } from 'fastify'
 
 import { authenticated } from '#middleware'
-import { authRoutes } from './auth'
-import { healthRoutes } from './health'
+import { authRoutes } from '#routes/auth'
+import { healthRoutes } from '#routes/health'
 
 export const api = async (fastify: FastifyInstance) => {
   await fastify.register(healthRoutes, { prefix: '/health' })

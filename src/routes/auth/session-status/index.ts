@@ -3,7 +3,6 @@ import { _readCurrentSessionFromToken } from '#data/internal/session'
 import { _getUser } from '#data/internal/user'
 import { type User } from '#models/user'
 import { sanitize } from '#utils/sanitize'
-import { $q } from '@austin-butters/quickschema'
 import {
   type FastifyInstance,
   type FastifyReply,
@@ -26,9 +25,6 @@ const getToken = (request: FastifyRequest) => request.cookies[AUTH_COOKIE_NAME]
 
 export async function sessionStatusRoutes(fastify: FastifyInstance) {
   fastify.get('/', {
-    schema: {
-      body: $q({}),
-    },
     handler: async (request, reply) => {
       const token = getToken(request)
       let sessionExists: boolean = false

@@ -3,10 +3,23 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "type": "module",
+  "imports": {
+    "#*.js": {
+      "types": "./src/*.ts",
+      "default": "./dist/*.js"
+    },
+    "#*": {
+      "types": "./src/*/index.ts",
+      "default": "./dist/*/index.js"
+    }
+  },
   "scripts": {
     "build": "tsc",
     "dev": "ts-node-dev --respawn --transpile-only -r tsconfig-paths/register src/index.ts",
     "start": "node dist/index.js",
+    "render:build": "npm install && npm run build && npm prune --omit=dev",
+    "render:start": "node dist/index.js",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev"
@@ -16,12 +29,12 @@
     "@fastify/cookie": "^7.4.0",
     "@fastify/static": "^6.12.0",
     "@prisma/client": "^5.7.1",
+    "@types/node": "^20.19.23",
     "dotenv": "^17.2.3",
     "fastify": "^4.24.3",
     "jsonschema7": "^0.8.0"
   },
   "devDependencies": {
-    "@types/node": "^20.19.23",
     "prisma": "^5.7.1",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",

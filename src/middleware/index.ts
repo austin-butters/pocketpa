@@ -1,1 +1,1 @@
-export { authenticated } from './authenticated'
+export { authenticated } from './authenticated.js'

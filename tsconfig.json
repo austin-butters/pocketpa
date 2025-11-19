@@ -18,13 +18,13 @@
     /* Module Resolution */
     "moduleResolution": "Bundler",
     "module": "ES2020",
-    "noEmit": true,
+    "noEmit": false,
 
     /* Libraries */
     "lib": ["ES2020"],
 
     /* Types */
-    "types": ["node", "@fastify/cookie"],
+    "types": ["node"],
 
     /* Build */
     "outDir": "./dist",
