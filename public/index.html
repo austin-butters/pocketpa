@@ -2,35 +2,13 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>POCKETPa.</title>
+    <title>POCKETPa Client</title>
+    <script type="module" crossorigin src="/assets/index-CdTlNZy3.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-BGVRYIrT.css">
   </head>
   <body>
-    <h1>STATIC HTML SERVED</h1>
-    <script>
-      const main = async () => {
-        try {
-          const response = await fetch('/api/user', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              email: `test${Math.random()}@test.com`,
-            }),
-          })
-
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`)
-          }
-
-          const user = await response.json()
-          console.log({ user })
-        } catch (error) {
-          console.error('Error creating user:', error)
-        }
-      }
-      main()
-    </script>
+    <div id="root"></div>
   </body>
 </html>
