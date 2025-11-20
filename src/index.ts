@@ -31,6 +31,10 @@ const start = async () => {
       root: path.join(__dirname, '../public'),
     })
 
+    server.get('/app', async (_, reply) => {
+      return reply.sendFile('app.html')
+    })
+
     server.setNotFoundHandler((_, reply) => {
       return reply.sendFile('index.html')
     })
