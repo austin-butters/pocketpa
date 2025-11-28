@@ -27,7 +27,6 @@ import {
   type AuthPOSTResendVerificationCode,
   type AuthPOSTVerifyLogin,
 } from '#models/auth'
-import { sessionStatusRoutes } from '#routes/auth/session-status'
 import { sanitize } from '#utils/sanitize'
 import { $q } from '@austin-butters/quickschema'
 import {
@@ -35,6 +34,7 @@ import {
   type FastifyReply,
   type FastifyRequest,
 } from 'fastify'
+import { sessionStatusRoutes } from './session-status/index.js'
 
 const standardSetSignedCookieOptions = {
   httpOnly: true,

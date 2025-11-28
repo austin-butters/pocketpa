@@ -1,11 +1,6 @@
-import type { FastifyInstance } from 'fastify'
-
-import { authenticated } from '#middleware'
-import { authRoutes } from '#routes/auth'
-import { healthRoutes } from '#routes/health'
+import { type FastifyInstance } from 'fastify'
+import { v0 } from './v0/index.js'
 
 export const api = async (fastify: FastifyInstance) => {
-  await fastify.register(healthRoutes, { prefix: '/health' })
-  await fastify.register(authRoutes, { prefix: '/auth' })
-  await fastify.register(authenticated(async (fastify) => {}))
+  await fastify.register(v0, { prefix: '/v0' })
 }

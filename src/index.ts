@@ -1,12 +1,12 @@
 import { COOKIE_SECRET, PORT } from '#config'
 import { prisma } from '#lib/prisma'
 import { api } from '#routes'
+import { reactApp } from '#src/serve-react-app'
 import fastifyCookie from '@fastify/cookie'
 import fastifyStatic from '@fastify/static'
 import Fastify from 'fastify'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import { reactApp } from './serve-react-app'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)

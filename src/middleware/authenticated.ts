@@ -1,7 +1,7 @@
 import { AUTH_COOKIE_NAME } from '#config'
 import { _readCurrentSessionFromToken } from '#data/internal/session'
 import { _getUser } from '#data/internal/user'
-import { clearAuthCookie } from '#routes/auth'
+import { clearAuthCookie } from '#routes/v0/auth'
 import { type FastifyPluginAsync } from 'fastify'
 
 export const authenticated = (

@@ -53,7 +53,9 @@
       "#middleware": ["./middleware/index.ts"],
       "#middleware/*": ["./middleware/*", "./middleware/*/index.ts"],
       "#schemas": ["./schemas/index.ts"],
-      "#schemas/*": ["./schemas/*", "./schemas/*/index.ts"]
+      "#schemas/*": ["./schemas/*", "./schemas/*/index.ts"],
+      "#src": ["./src/index.ts"],
+      "#src/*": ["./*", "./src/*/index.ts"]
     }
   }
 }

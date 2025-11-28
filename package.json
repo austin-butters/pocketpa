@@ -9,6 +9,10 @@
       "types": "./src/*.ts",
       "default": "./dist/*.js"
     },
+    "#src/*": {
+      "types": "./src/*/index.ts",
+      "default": "./dist/*/index.js"
+    },
     "#*": {
       "types": "./src/*/index.ts",
       "default": "./dist/*/index.js"
