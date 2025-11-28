@@ -6,12 +6,14 @@ import fastifyStatic from '@fastify/static'
 import Fastify from 'fastify'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { reactApp } from './serve-react-app'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 const server = Fastify({
   logger: true,
+  ignoreTrailingSlash: true,
   ajv: {
     customOptions: {
       removeAdditional: false,
@@ -31,9 +33,7 @@ const start = async () => {
       root: path.join(__dirname, '../public'),
     })
 
-    server.get('/app', async (_, reply) => {
-      return reply.sendFile('app.html')
-    })
+    await server.register(reactApp, { prefix: '/app' })
 
     server.setNotFoundHandler((_, reply) => {
       return reply.sendFile('index.html')
