@@ -27,41 +27,11 @@ import {
   type AuthPOSTResendVerificationCode,
   type AuthPOSTVerifyLogin,
 } from '#models/auth'
+import { clearAuthCookie, setAuthCookie } from '#utils/auth-cookie'
 import { sanitize } from '#utils/sanitize'
 import { $q } from '@austin-butters/quickschema'
-import {
-  type FastifyInstance,
-  type FastifyReply,
-  type FastifyRequest,
-} from 'fastify'
+import { type FastifyInstance, type FastifyRequest } from 'fastify'
 import { sessionStatusRoutes } from './session-status/index.js'
-
-const standardSetSignedCookieOptions = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'strict',
-  path: '/',
-  signed: true,
-} as const
-
-const standardClearSignedCookieOptions = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'strict',
-  path: '/',
-} as const
-
-const setAuthCookie = (reply: FastifyReply, _session: _Session) => {
-  reply.cookie(AUTH_COOKIE_NAME, _session.token, {
-    ...standardSetSignedCookieOptions,
-    maxAge: Math.floor((_session.expiresAt.getTime() - Date.now()) / 1000),
-  })
-}
-
-// TODO: Find a better place to export this and the setAuthCookie function.
-export const clearAuthCookie = (reply: FastifyReply) => {
-  reply.clearCookie(AUTH_COOKIE_NAME, standardClearSignedCookieOptions)
-}
 
 const getToken = (request: FastifyRequest) => request.cookies[AUTH_COOKIE_NAME]
 

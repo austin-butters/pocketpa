@@ -2,24 +2,9 @@ import { AUTH_COOKIE_NAME } from '#config'
 import { _readCurrentSessionFromToken } from '#data/internal/session'
 import { _getUser } from '#data/internal/user'
 import { type User } from '#models/user'
+import { clearAuthCookie } from '#utils/auth-cookie'
 import { sanitize } from '#utils/sanitize'
-import {
-  type FastifyInstance,
-  type FastifyReply,
-  type FastifyRequest,
-} from 'fastify'
-
-// TODO: Use imported helpers here rather than hardcoded.
-const standardClearSignedCookieOptions = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'strict',
-  path: '/',
-} as const
-
-const clearAuthCookie = (reply: FastifyReply) => {
-  reply.clearCookie(AUTH_COOKIE_NAME, standardClearSignedCookieOptions)
-}
+import { type FastifyInstance, type FastifyRequest } from 'fastify'
 
 const getToken = (request: FastifyRequest) => request.cookies[AUTH_COOKIE_NAME]
 
