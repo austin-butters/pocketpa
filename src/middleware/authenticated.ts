@@ -1,7 +1,7 @@
-import { AUTH_COOKIE_NAME } from '#config'
+import { getOptionalToken } from '#context'
 import { _readCurrentSessionFromToken } from '#data/internal/session'
 import { _getUser } from '#data/internal/user'
-import { clearAuthCookie } from '#routes/v0/auth'
+import { clearAuthCookie } from '#utils/auth-cookie'
 import { type FastifyPluginAsync } from 'fastify'
 
 export const authenticated = (
@@ -9,7 +9,7 @@ export const authenticated = (
 ): FastifyPluginAsync => {
   return async (fastify, opts) => {
     fastify.addHook('onRequest', async (request, reply) => {
-      const token = request.cookies[AUTH_COOKIE_NAME]
+      const token = getOptionalToken()
       if (!token) {
         return reply.status(401).send({ error: 'Unauthorized' })
       }
@@ -24,7 +24,7 @@ export const authenticated = (
           return reply.status(401).send({ error: 'Unauthorized' })
         }
 
-        request._user = _user
+        // setAuthenticationContext({ _user, _session })
       } catch {
         return reply.status(500).send({ error: 'Internal server error' })
       }

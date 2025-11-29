@@ -1,17 +1,15 @@
-import { AUTH_COOKIE_NAME } from '#config'
+import { getOptionalToken } from '#context'
 import { _readCurrentSessionFromToken } from '#data/internal/session'
 import { _getUser } from '#data/internal/user'
 import { type User } from '#models/user'
 import { clearAuthCookie } from '#utils/auth-cookie'
 import { sanitize } from '#utils/sanitize'
-import { type FastifyInstance, type FastifyRequest } from 'fastify'
+import { type FastifyInstance } from 'fastify'
 
-const getToken = (request: FastifyRequest) => request.cookies[AUTH_COOKIE_NAME]
-
-export async function sessionStatusRoutes(fastify: FastifyInstance) {
+export const sessionStatus = async (fastify: FastifyInstance) => {
   fastify.get('/', {
-    handler: async (request, reply) => {
-      const token = getToken(request)
+    handler: async (_, reply) => {
+      const token = getOptionalToken()
       let sessionExists: boolean = false
       let user: User | null = null
       if (typeof token === 'string') {

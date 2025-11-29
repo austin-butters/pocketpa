@@ -1,9 +1,4 @@
 import { type CreatePotentialUserData } from '#models/user'
-
-export interface AuthPOSTCheckAvailability {
-  Body: CreatePotentialUserData
-}
-
 export interface AuthPOSTCheckAvailabilityResponse {
   emailAvailable: boolean | null
   usernameAvailable: boolean | null
@@ -22,13 +17,6 @@ export interface AuthPOSTLoginAnonymous {
 export interface AuthPOSTLogin {
   Body: {
     email: string
-  }
-}
-
-export interface AuthPOSTVerifyLogin {
-  Body: {
-    email: string
-    verificationCode: string
   }
 }
 
