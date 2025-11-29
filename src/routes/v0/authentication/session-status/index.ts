@@ -1,6 +1,6 @@
 import { getOptionalToken } from '#context'
-import { _readCurrentSessionFromToken } from '#data/internal/session'
-import { _getUser } from '#data/internal/user'
+import { readCurrentSessionFromToken } from '#data/session'
+import { getUser } from '#data/user'
 import { type User } from '#models/user'
 import { clearAuthCookie } from '#utils/auth-cookie'
 import { sanitize } from '#utils/sanitize'
@@ -14,9 +14,9 @@ export const sessionStatus = async (fastify: FastifyInstance) => {
       let user: User | null = null
       if (typeof token === 'string') {
         try {
-          const { _session } = await _readCurrentSessionFromToken(token)
+          const { _session } = await readCurrentSessionFromToken(token)
           if (_session !== undefined) {
-            const { _user } = await _getUser(_session.userId)
+            const { _user } = await getUser(_session.userId)
             if (_user !== undefined) {
               user = sanitize.user(_user)
               sessionExists = true

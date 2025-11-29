@@ -1,6 +1,6 @@
-import { getOptionalToken } from '#context'
-import { _readCurrentSessionFromToken } from '#data/internal/session'
-import { _getUser } from '#data/internal/user'
+import { getOptionalToken, setSession, setUser } from '#context'
+import { readCurrentSessionFromToken } from '#data/session'
+import { getUser } from '#data/user'
 import { clearAuthCookie } from '#utils/auth-cookie'
 import { type FastifyPluginAsync } from 'fastify'
 
@@ -8,23 +8,24 @@ export const authenticated = (
   callback: FastifyPluginAsync
 ): FastifyPluginAsync => {
   return async (fastify, opts) => {
-    fastify.addHook('onRequest', async (request, reply) => {
+    fastify.addHook('onRequest', async (_, reply) => {
       const token = getOptionalToken()
       if (!token) {
         return reply.status(401).send({ error: 'Unauthorized' })
       }
       try {
-        const { _session } = await _readCurrentSessionFromToken(token)
+        const { _session } = await readCurrentSessionFromToken(token)
         if (!_session) {
           return reply.status(401).send({ error: 'Unauthorized' })
         }
-        const { _user } = await _getUser(_session.userId)
+        const { _user } = await getUser(_session.userId)
         if (!_user) {
           clearAuthCookie(reply)
           return reply.status(401).send({ error: 'Unauthorized' })
         }
 
-        // setAuthenticationContext({ _user, _session })
+        setUser(_user)
+        setSession(_session)
       } catch {
         return reply.status(500).send({ error: 'Internal server error' })
       }

@@ -1,8 +1,5 @@
-import { _createSession } from '#data/internal/session'
-import {
-  _getUserByEmail,
-  _verifyUserWithVerificationCode,
-} from '#data/internal/user'
+import { createSession } from '#data/session'
+import { getUserByEmail, verifyUserWithVerificationCode } from '#data/user'
 import { clearAuthCookie, setAuthCookie } from '#utils/auth-cookie'
 import { sanitize } from '#utils/sanitize'
 import { $q } from '@austin-butters/quickschema'
@@ -25,7 +22,7 @@ export const verifyLogin = async (fastify: FastifyInstance) => {
     handler: async (request, reply) => {
       const { email, verificationCode } = request.body
       try {
-        const { _user } = await _getUserByEmail(email)
+        const { _user } = await getUserByEmail(email)
         if (_user === undefined) {
           return reply.status(401).send({ error: 'Unauthorized' })
         }
@@ -36,13 +33,13 @@ export const verifyLogin = async (fastify: FastifyInstance) => {
           return reply.status(401).send({ error: 'Unauthorized' })
         }
         const { _user: _checkedUser, _verified } =
-          await _verifyUserWithVerificationCode({
+          await verifyUserWithVerificationCode({
             _user,
             code: verificationCode,
           })
 
         if (_verified) {
-          const { _session } = await _createSession(_user.id)
+          const { _session } = await createSession(_user.id)
           setAuthCookie(reply, _session)
         }
         // TODO: Add an attempts field to give users a number of attempts.

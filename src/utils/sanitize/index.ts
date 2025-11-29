@@ -1,4 +1,4 @@
-import { type _User } from '#data/internal/user'
+import { type _User } from '#data/internal/_user'
 import { type User } from '#models/user'
 
 const user = (user: _User): User => {

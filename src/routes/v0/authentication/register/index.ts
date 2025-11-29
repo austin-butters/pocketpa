@@ -1,17 +1,16 @@
 import { getOptionalToken } from '#context'
+import { type _Session } from '#data/internal/_session'
+import { _isAnonymousUser, type _User } from '#data/internal/_user'
 import {
-  _createSession,
-  _readCurrentSessionFromToken,
-  _refreshSession,
-  type _Session,
-} from '#data/internal/session'
+  createSession,
+  readCurrentSessionFromToken,
+  refreshSession,
+} from '#data/session'
 import {
-  _createPotentialUser,
-  _createPotentialUserFromAnonymousUser,
-  _getUser,
-  _isAnonymousUser,
-  type _User,
-} from '#data/internal/user'
+  createPotentialUser,
+  createPotentialUserFromAnonymousUser,
+  getUser,
+} from '#data/user'
 import { clearAuthCookie, setAuthCookie } from '#utils/auth-cookie'
 import { sanitize } from '#utils/sanitize'
 import { $q } from '@austin-butters/quickschema'
@@ -37,19 +36,19 @@ export const register = async (fastify: FastifyInstance) => {
         let _session: _Session
         if (token === undefined) {
           // If no token, create new potential user.
-          _user = (await _createPotentialUser({ email, username }))._user
-          _session = (await _createSession(_user.id))._session
+          _user = (await createPotentialUser({ email, username }))._user
+          _session = (await createSession(_user.id))._session
         } else {
           // Currently logged in, create potential user from current anonymous user
           // If token invalid (i.e. no session, reject)
           const { _session: _existingSession } =
-            await _readCurrentSessionFromToken(token)
+            await readCurrentSessionFromToken(token)
           if (_existingSession === undefined) {
             clearAuthCookie(reply)
             return reply.status(401).send({ error: 'Unauthorized' })
           }
           // If user from token invalid (i.e. no user, wrong type of user, or non-anonymous user), clear the authentication cookie and reject.
-          const { _user: _existingUser } = await _getUser(
+          const { _user: _existingUser } = await getUser(
             _existingSession.userId
           )
           if (_existingUser === undefined) {
@@ -60,9 +59,9 @@ export const register = async (fastify: FastifyInstance) => {
             return reply.status(403).send({ error: 'Forbidden' })
           }
           // Set session and user.
-          _session = (await _refreshSession(_existingSession))._session
+          _session = (await refreshSession(_existingSession))._session
           _user = (
-            await _createPotentialUserFromAnonymousUser({
+            await createPotentialUserFromAnonymousUser({
               _user: _existingUser,
               email,
               username,

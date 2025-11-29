@@ -1,6 +1,6 @@
 import { AUTH_COOKIE_NAME } from '#config'
-import type { _Session } from '#data/internal/session/index.js'
-import type { _User } from '#data/internal/user/index.js'
+import type { _Session } from '#data/internal/_session'
+import type { _User } from '#data/internal/_user'
 import { type FastifyRequest } from 'fastify'
 import { AsyncLocalStorage } from 'node:async_hooks'
 

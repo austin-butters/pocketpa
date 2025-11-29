@@ -1,6 +1,6 @@
 import { getOptionalToken } from '#context'
-import { _createSession } from '#data/internal/session'
-import { _createAnonymousUser } from '#data/internal/user'
+import { createSession } from '#data/session'
+import { createAnonymousUser } from '#data/user'
 import { clearAuthCookie, setAuthCookie } from '#utils/auth-cookie'
 import { sanitize } from '#utils/sanitize'
 import { type FastifyInstance } from 'fastify'
@@ -15,8 +15,8 @@ export const registerAnonymous = async (fastify: FastifyInstance) => {
         })
       }
       try {
-        const { _user } = await _createAnonymousUser()
-        const { _session } = await _createSession(_user.id)
+        const { _user } = await createAnonymousUser()
+        const { _session } = await createSession(_user.id)
         setAuthCookie(reply, _session)
         const user = sanitize.user(_user)
         return reply.status(201).send({ user })

@@ -1,4 +1,4 @@
-import { withRequestContext } from '#middleware/with-request-context.js'
+import { withRequestContext } from '#middleware'
 import { type FastifyInstance } from 'fastify'
 import { v0 } from './v0/index.js'
 
