@@ -3,11 +3,11 @@ import { $q } from '@austin-butters/quickschema'
 import { type FastifyInstance } from 'fastify'
 
 const schema = {
-  body: $q({ email: 'string', username: 'string' }),
+  querystring: $q({ email: 'string', username: 'string' }),
 }
 
 interface WithSchemaTypeValidation {
-  Body: {
+  Querystring: {
     email: string
     username: string
   }
@@ -16,10 +16,10 @@ interface WithSchemaTypeValidation {
 export const checkRegistrationAvailability = async (
   fastify: FastifyInstance
 ) => {
-  fastify.post<WithSchemaTypeValidation>('/', {
+  fastify.get<WithSchemaTypeValidation>('/', {
     schema,
     handler: async (request, reply) => {
-      const { email, username } = request.body
+      const { email, username } = request.query
       try {
         const emailAvailable = !(await emailIsTaken(email))
         const usernameAvailable = !(await usernameIsTaken(username))
